@@ -41,6 +41,7 @@ import {
   mergeAuthoringNamespaces,
 } from '../shared/framework-authoring';
 import type { ComponentMetadata } from '../shared/framework-components';
+import { assertOneFrameworkCopy } from '../shared/framework-copies';
 import {
   assembleGeneratorFunctions,
   assembleGeneratorRegistrations,
@@ -718,6 +719,7 @@ export function buildExtensionLoadOrder(
 export function createControlStack<TFamilyId extends string, TTargetId extends string>(
   input: CreateControlStackInput<TFamilyId, TTargetId>,
 ): ControlStack<TFamilyId, TTargetId> {
+  assertOneFrameworkCopy();
   const { family, target, adapter, driver, extensions = [] } = input;
 
   const orderedIds = buildExtensionLoadOrder(extensions);
