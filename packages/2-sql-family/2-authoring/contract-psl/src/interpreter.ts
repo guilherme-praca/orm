@@ -121,6 +121,7 @@ import { ifDefined } from '@internal/utils/defined';
 import { InternalError } from '@internal/utils/internal-error';
 import { notOk, ok, type Result } from '@internal/utils/result';
 import { isStructuredError } from '@internal/utils/structured-error';
+import { compareStrings } from './compare-strings';
 import { contractError } from './contract-errors';
 import { defaultTableName } from './default-table-name';
 import {
@@ -220,16 +221,6 @@ function buildComposedExtensionPackRefs(
         } satisfies ExtensionPackRef<'sql', string>),
     ]),
   );
-}
-
-function compareStrings(left: string, right: string): -1 | 0 | 1 {
-  if (left < right) {
-    return -1;
-  }
-  if (left > right) {
-    return 1;
-  }
-  return 0;
 }
 
 function declarationsHoldingModels(namespace: NamespaceSymbol): ReadonlySet<SyntaxNode> {
@@ -521,6 +512,7 @@ function processEnumDeclarations(input: ProcessEnumDeclarationsInput): {
 
 interface BuildModelNodeInput {
   readonly model: ModelSymbol;
+  readonly droppedFields: Set<FieldSymbol>;
   readonly physicalNames: ReadonlyMap<ModelSymbol | FieldSymbol, string>;
   readonly namespaceId: string;
   /** The value objects the composite types declare, by name. */
@@ -658,6 +650,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
     generatorFunctions: input.generatorFunctions,
     dataTypes: input.dataTypes,
     diagnostics,
+    droppedFields: input.droppedFields,
     sources: input.sources,
     binder: input.binder,
     scalarColumnDescriptors: input.scalarColumnDescriptors,
@@ -1464,6 +1457,7 @@ function buildModelNodeFromPsl(input: BuildModelNodeInput): BuildModelNodeResult
 
 interface BuildValueObjectNodesInput {
   readonly compositeTypes: readonly CompositeTypeSymbol[];
+  readonly droppedFields: Set<FieldSymbol>;
   readonly enumTypeDescriptors: ReadonlyMap<BlockSymbol, ColumnDescriptor>;
   readonly enumHandles: ReadonlyMap<BlockSymbol, EnumTypeHandle>;
   readonly typeAliases: ResolvedTypeAliases;
@@ -1528,6 +1522,7 @@ function buildValueObjectNodes(input: BuildValueObjectNodesInput): ValueObjectNo
         dataTypes: input.dataTypes,
       });
       if (!resolved.ok) {
+        input.droppedFields.add(field);
         continue;
       }
       const { descriptor } = resolved;
@@ -2511,8 +2506,10 @@ export function interpretPslDocumentToSqlContract(
     Record<string, Record<string, unknown>>
   >();
 
+  const droppedFields = new Set<FieldSymbol>();
   const valueObjects = buildValueObjectNodes({
     compositeTypes,
+    droppedFields,
     enumTypeDescriptors: allEnumTypeDescriptors,
     enumHandles,
     typeAliases,
@@ -2537,6 +2534,7 @@ export function interpretPslDocumentToSqlContract(
   for (const { model, namespaceId } of modelEntries) {
     const result = buildModelNodeFromPsl({
       model,
+      droppedFields,
       physicalNames,
       namespaceId,
       valueObjectTypes,
@@ -2748,7 +2746,11 @@ export function interpretPslDocumentToSqlContract(
       defaultNamespaceId,
     );
 
-  if (diagnostics.length > 0 || (input.seedDiagnostics?.length ?? 0) > 0) {
+  if (
+    diagnostics.length > 0 ||
+    (input.seedDiagnostics?.length ?? 0) > 0 ||
+    droppedFields.size > 0
+  ) {
     return notOk({
       summary: 'PSL to SQL contract interpretation failed',
       diagnostics: [...(input.seedDiagnostics ?? []), ...diagnostics.toExternal()],

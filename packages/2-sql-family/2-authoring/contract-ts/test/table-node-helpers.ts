@@ -63,7 +63,7 @@ export const targetPack = {
   targetId: 'postgres',
   version: '0.0.1',
   defaultNamespaceId: 'public',
-  authoring: { field: {}, renderCheckExpressions, qualifyColumnType },
+  authoring: { type: {}, renderCheckExpressions, qualifyColumnType },
 } as const;
 
 export function definitionOf(

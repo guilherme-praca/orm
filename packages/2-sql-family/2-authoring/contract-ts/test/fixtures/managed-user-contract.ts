@@ -10,14 +10,6 @@ const sqlFamilyPack = {
   id: 'sql',
   familyId: 'sql',
   version: '0.0.1',
-  authoring: {
-    field: {
-      text: {
-        kind: 'fieldPreset',
-        output: { codecId: 'pg/text@1' },
-      },
-    },
-  },
 } as const satisfies FamilyPackRef<'sql'>;
 
 export function renderCheckExpressions(input: CheckExpressionInput): ReadonlyArray<{
@@ -59,7 +51,7 @@ const postgresTargetPack = {
   targetId: 'postgres',
   version: '0.0.1',
   defaultNamespaceId: 'public',
-  authoring: { field: {}, renderCheckExpressions },
+  authoring: { type: {}, renderCheckExpressions },
 } as const;
 
 const pgText = { codecId: 'pg/text@1' as const } as const;
@@ -77,7 +69,11 @@ export default defineContract(
     ({
       models: {
         User: m('User', {
-          fields: { id: f.text().id(), role: f.namedType(Role), tags: f.text().many() },
+          fields: {
+            id: f.column(pgText).id(),
+            role: f.namedType(Role),
+            tags: f.column(pgText).many(),
+          },
         }),
       },
     }) as const,
