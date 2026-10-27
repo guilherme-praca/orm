@@ -15,7 +15,7 @@ Commands and clients now refuse to start when Prisma ORM is loaded from more tha
 
 After upgrading, check that one copy is installed:
 
-1. Every `@prisma/orm-*` entry in `package.json` names the same version, including extensions such as `@prisma/orm-extension-pgvector`.
+1. Every `@prisma/orm-*` entry in `package.json` other than `@prisma/orm-extension-*` names the same version. Extensions carry their own version; each one must depend on that same version of Prisma ORM.
 2. The `prisma` CLI runs that version. `npm ls @prisma/orm-framework`, `pnpm why @prisma/orm-framework` or `bun why @prisma/orm-framework` lists every copy and the package that brought it.
 
-If more than one version is listed, align the versions and reinstall. If every copy is the same version, delete `node_modules` and the lockfile and reinstall.
+If more than one version is listed, align the versions and reinstall. If every copy is the same version, delete `node_modules` and the lockfile and reinstall. With pnpm, copies of one version can also differ by their peer dependencies: `pnpm why @prisma/orm-framework` shows the difference, and giving every dependent the same peer leaves one copy.
