@@ -95,7 +95,25 @@ The orchestrator writes the documentation: the error-reference entry, `upgrade-e
   - `pnpm lint:deps`.
   - `pnpm test:packages`, run once at the end and saved to a file, because every stack-creating test now runs the check.
 
-### 2. The two-copy packaging test
+### 2. One copy in this repository's own runs
+
+Dispatch 1's check found that the repository runs two copies wherever a project imports published names. The root `prisma` bin is `@internal/cli`. Every example and app imports `@prisma/orm-postgres` and its siblings, which bundle their own framework copy. So `pnpm --filter bundle-size emit:pg` fails with `RUNTIME.MULTIPLE_ORM_COPIES`.
+
+- **Outcome:** examples and apps run a `prisma` command that loads the CLI from the published toolchain build, so the CLI and the project share one copy.
+  - `@internal/cli` gains one export subpath for `runOrmCli`. The toolchain shell forwards it as a `@prisma/orm-toolchain/cli` subpath.
+  - A new private workspace package has a `prisma` bin that calls `runOrmCli` from that subpath. Nothing internal depends on it, so it adds no cycle.
+  - Every example and app depends on it as a dev dependency. Their `prisma` scripts resolve to it, not to the root `@internal/cli` bin.
+  - `@internal/cli`'s own test fixture (`test/fixture-app/package.json`) aliases its published database packages to the internal ones (`workspace:@internal/postgres@*`), so the CLI tests keep running from source.
+  - The CLI telemetry harness runs `db init` with the new bin.
+- **Builds on:** dispatch 1.
+- **Hands to:** green CLI tests, CLI telemetry tests, `pnpm fixtures:check`, and every example's emit.
+- **Gate:**
+  - `pnpm build`, then `pnpm fixtures:check`.
+  - `pnpm --filter @internal/cli test` and the CLI telemetry tests.
+  - `pnpm lint:deps`.
+  - Any integration or e2e test file that runs the CLI against a project importing published names, run by file.
+
+### 3. The two-copy packaging test
 
 - **Outcome:** a test in `test/integration/test/packaging/` installs packed shells with two copies of `@prisma/orm-framework`. It runs `contract emit` on a contract with `@default(false)` and gets `RUNTIME.MULTIPLE_ORM_COPIES` naming both folders.
 - **Builds on:** dispatch 1's error.
