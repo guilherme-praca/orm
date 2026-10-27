@@ -97,7 +97,7 @@ describe('MySQL runtime driver', { timeout: timeouts.databaseOperation }, () => 
     });
   });
 
-  it('keeps a value inside its literal even after the session turns on NO_BACKSLASH_ESCAPES, set without the raw-SQL flag so the driver leaves the mode on', async (test) => {
+  it('keeps a value inside its literal even after a held connection turns on NO_BACKSLASH_ESCAPES', async (test) => {
     await withMysqlDatabase(test, ({ url }) =>
       withDriver(url, async (driver) => {
         const value = "\\' OR TRUE -- ";
@@ -231,7 +231,7 @@ describe('MySQL runtime driver', { timeout: timeouts.databaseOperation }, () => 
     );
   });
 
-  it('refuses a statement whose placeholder count MySQL reads differently from the values, before running it, under NO_BACKSLASH_ESCAPES set without the raw-SQL flag so the driver leaves the mode on', async (test) => {
+  it('refuses a statement whose placeholder count MySQL reads differently from the values, before running it, under NO_BACKSLASH_ESCAPES set on a held connection', async (test) => {
     await withMysqlDatabase(test, ({ url }) =>
       withDriver(url, async (driver) => {
         const connection = await driver.acquireConnection();
@@ -255,179 +255,21 @@ describe('MySQL runtime driver', { timeout: timeouts.databaseOperation }, () => 
     );
   });
 
-  it('gives the next borrower the session setup after a statement that holds raw SQL', async (test) => {
+  it('keeps a SET on its connection after the connection goes back to the pool, as Postgres does', async (test) => {
     await withMysqlDatabase(test, async ({ url }) => {
       const single = new URL(url);
       single.searchParams.set('connectionLimit', '1');
       await withDriver(single.toString(), async (driver) => {
-        const session = async () =>
-          (
-            await collect(
-              driver.query<Record<string, string>>({
-                sql: "SELECT FIND_IN_SET('NO_BACKSLASH_ESCAPES', @@SESSION.sql_mode) AS nbe, @@SESSION.time_zone AS tz, @@SESSION.character_set_client AS cs",
-              }),
-            )
-          )[0];
-        const held = await driver.acquireConnection();
-        await held.execute({
-          sql: "SET SESSION sql_mode = 'NO_BACKSLASH_ESCAPES'",
+        const zone = () =>
+          collect(
+            driver.query<Record<string, string>>({ sql: 'SELECT @@SESSION.time_zone AS tz' }),
+          );
+        const before = await zone();
+        await driver.execute({ sql: "SET time_zone = '+05:00'" });
+        expect({ before, after: await zone() }).toEqual({
+          before: [{ tz: '+00:00' }],
+          after: [{ tz: '+05:00' }],
         });
-        await held.execute({ sql: "SET time_zone = '+05:00'" });
-        await held.release();
-        const afterHeld = await session();
-        await driver.execute({ sql: 'SET NAMES latin1' });
-        const afterPooled = await session();
-        for await (const _row of driver.query({
-          sql: "SET time_zone = '+03:00'",
-        })) {
-        }
-        const afterStream = await session();
-        const restored = { nbe: '0', tz: '+00:00', cs: 'utf8mb4' };
-        expect({ afterHeld, afterPooled, afterStream }).toEqual({
-          afterHeld: restored,
-          afterPooled: restored,
-          afterStream: restored,
-        });
-      });
-    });
-  });
-
-  it('runs the statements of a transaction one at a time, so a read started beside a raw SET still sees the session setup afterwards', async (test) => {
-    await withMysqlDatabase(test, ({ url }) =>
-      withDriver(url, async (driver) => {
-        const readMode = {
-          sql: "SELECT FIND_IN_SET('NO_BACKSLASH_ESCAPES', @@SESSION.sql_mode) AS nbe",
-        } as const;
-        const results = [];
-        for (const hops of [0, 1, 2, 4, 8]) {
-          const held = await driver.acquireConnection();
-          try {
-            const transaction = await held.beginTransaction();
-            const [, beside] = await Promise.all([
-              transaction.execute({
-                sql: "SET SESSION sql_mode = 'NO_BACKSLASH_ESCAPES'",
-              }),
-              (async () => {
-                for (let hop = 0; hop < hops; hop += 1) await Promise.resolve();
-                return collect(transaction.query(readMode));
-              })(),
-            ]);
-            const next = await collect(transaction.query(readMode));
-            const afterThat = await collect(transaction.query(readMode));
-            await transaction.commit();
-            results.push({ hops, beside, next, afterThat });
-          } finally {
-            await held.release();
-          }
-        }
-        const setUp = [{ nbe: '0' }];
-        expect(results).toEqual(
-          [0, 1, 2, 4, 8].map((hops) => ({ hops, beside: setUp, next: setUp, afterThat: setUp })),
-        );
-      }),
-    );
-  });
-
-  it('closes a connection that ran raw SQL by telling the server, so the server does not count them as aborted clients', async (test) => {
-    await withMysqlDatabase(test, async ({ url }) => {
-      const admin = await mysqlControlDriver.create(url);
-      const abortedClients = async () => {
-        const { rows } = await admin.query<{ Value: string }>(
-          "SHOW GLOBAL STATUS LIKE 'Aborted_clients'",
-        );
-        return Number(rows[0]?.Value);
-      };
-      const rawStatements = 20;
-      try {
-        const before = await abortedClients();
-        await withDriver(url, async (driver) => {
-          for (let statement = 0; statement < rawStatements - 1; statement += 1) {
-            await driver.execute({ sql: "SET time_zone = '+05:00'" });
-          }
-          const held = await driver.acquireConnection();
-          await held.execute({ sql: "SET time_zone = '+05:00'" });
-          await held.release();
-        });
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        expect(await abortedClients()).toBeLessThan(before + rawStatements);
-      } finally {
-        await admin.close();
-      }
-    });
-  });
-
-  describe('a setting raw SQL changes', () => {
-    async function withOneConnection(
-      test: Parameters<typeof withMysqlDatabase>[0],
-      fn: (driver: ReturnType<typeof mysqlRuntimeDriver.create>) => Promise<void>,
-    ): Promise<void> {
-      await withMysqlDatabase(test, async ({ url }) => {
-        const single = new URL(url);
-        single.searchParams.set('connectionLimit', '1');
-        await withDriver(single.toString(), async (driver) => {
-          await driver.execute({ sql: 'CREATE TABLE t (n INT)' });
-          await driver.execute({
-            sql: 'INSERT INTO t (n) VALUES (1), (2), (3), (4)',
-          });
-          await fn(driver);
-        });
-      });
-    }
-
-    const readAll = { sql: 'SELECT n FROM t ORDER BY n' } as const;
-    const allRows = [{ n: 1 }, { n: 2 }, { n: 3 }, { n: 4 }];
-    const readSession = {
-      sql: 'SELECT @@SESSION.autocommit AS autocommit, @@SESSION.foreign_key_checks AS fk',
-    } as const;
-
-    it('does not reach the next statement through the pool', async (test) => {
-      await withOneConnection(test, async (driver) => {
-        await driver.execute({ sql: 'SET SESSION sql_select_limit = 1' });
-        const afterLimit = await collect(driver.query(readAll));
-        await driver.execute({
-          sql: 'SET SESSION autocommit = 0, foreign_key_checks = 0',
-        });
-        const afterSession = await collect(driver.query(readSession));
-        expect({ afterLimit, afterSession }).toEqual({
-          afterLimit: allRows,
-          afterSession: [{ autocommit: '1', fk: '1' }],
-        });
-      });
-    });
-
-    it('lasts while a connection is held, and does not reach the next borrower after release', async (test) => {
-      await withOneConnection(test, async (driver) => {
-        const held = await driver.acquireConnection();
-        await held.execute({ sql: 'SET SESSION sql_select_limit = 1' });
-        await held.execute({
-          sql: 'SET SESSION autocommit = 0, foreign_key_checks = 0',
-        });
-        const whileHeld = {
-          rows: await collect(held.query(readAll)),
-          session: await collect(held.query(readSession)),
-        };
-        await held.release();
-        const afterRelease = {
-          rows: await collect(driver.query(readAll)),
-          session: await collect(driver.query(readSession)),
-        };
-        expect({ whileHeld, afterRelease }).toEqual({
-          whileHeld: { rows: [{ n: 1 }], session: [{ autocommit: '0', fk: '0' }] },
-          afterRelease: { rows: allRows, session: [{ autocommit: '1', fk: '1' }] },
-        });
-      });
-    });
-
-    it('does not reach the next borrower after a transaction on a held connection', async (test) => {
-      await withOneConnection(test, async (driver) => {
-        const held = await driver.acquireConnection();
-        const transaction = await held.beginTransaction();
-        await transaction.execute({
-          sql: 'SET SESSION sql_select_limit = 1',
-        });
-        await transaction.commit();
-        await held.release();
-        expect(await collect(driver.query(readAll))).toEqual(allRows);
       });
     });
   });
