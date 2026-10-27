@@ -16,7 +16,6 @@ import { unboundTables } from './unbound-tables';
 
 const authoringContributions = {
   entityTypes: testEnumEntityContributions,
-  field: {},
   pslBlockDescriptors: { enum: testEnumPslBlockDescriptor },
   modelAttributes: {},
   valueObjectStorageType: 'Jsonb',
@@ -108,8 +107,8 @@ model Post {
         { ref: ref('id'), onCreate: { kind: 'generator', id: 'uuidv4' } },
         {
           ref: ref('updatedAt'),
-          onCreate: { kind: 'generator', id: 'timestampStringNow' },
-          onUpdate: { kind: 'generator', id: 'timestampStringNow' },
+          onCreate: { kind: 'generator', id: 'timestampStringNow', params: { precision: 3 } },
+          onUpdate: { kind: 'generator', id: 'timestampStringNow', params: { precision: 3 } },
         },
       ],
     });

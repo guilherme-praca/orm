@@ -19,7 +19,6 @@ const baseInput = {
   authoringContributions: {
     entityTypes: testEnumEntityContributions,
     type: postgresScalarAuthoringTypes,
-    field: {},
   },
   composedExtensionContracts: new Map(),
   createNamespace: createTestSqlNamespace,
@@ -203,8 +202,8 @@ model Event {
       `types {
   Code = Char(12)
   Score = Real
-  CreatedAt = Timestamp(3)
-  PublishedAt = Timestamptz(6)
+  CreatedAt = TimestampTemporal(3)
+  PublishedAt = TimestamptzTemporal(6)
   ReminderAt = Timetz(2)
   Ip = Inet
 }

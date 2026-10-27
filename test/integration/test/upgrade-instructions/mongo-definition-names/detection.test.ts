@@ -1,25 +1,14 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'pathe';
 import { describe, expect, it } from 'vitest';
+import { detectionPatterns } from '../guide-detections';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(here, '../../../../..');
+const APP_GUIDE =
+  'skills/prisma-8/upgrading/app/upgrades/8.0.0-rc.20-to-8.0.0-rc.21/instructions.md';
+
+const EXTENSION_GUIDE =
+  'skills/prisma-8/upgrading/extension/upgrades/8.0.0-rc.20-to-8.0.0-rc.21/instructions.md';
 
 function patternsOf(audience: string, id: string): readonly RegExp[] {
-  const guide = readFileSync(
-    join(
-      repoRoot,
-      'upgrade-instructions/pending/mongo-definition-names',
-      audience,
-      'instructions.md',
-    ),
-    'utf-8',
-  );
-  const block = guide.split(/\n {2}- id: /).find((entry) => entry.startsWith(`${id}\n`)) ?? '';
-  return [...block.matchAll(/^ {8}- '(.*)'$/gm)].map(
-    ([, pattern]) => new RegExp((pattern ?? '').replaceAll("''", "'")),
-  );
+  return detectionPatterns(audience === 'app' ? APP_GUIDE : EXTENSION_GUIDE, id);
 }
 
 describe.each(['app', 'extension'])('the %s mongo-definition-names detection', (audience) => {

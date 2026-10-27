@@ -27,6 +27,7 @@ import type { JsonValue } from '@internal/target-postgres/codec-types';
 import postgresPack from '@internal/target-postgres/pack';
 import { postgresCreateNamespace } from '@internal/target-postgres/types';
 import { type as arktype } from 'arktype';
+import type { Temporal as TemporalTypes } from 'temporal-spec';
 import { expectTypeOf, test } from 'vitest';
 import { TestSqlContractSerializer as SqlContractSerializer } from '../../../packages/2-sql-family/9-family/test/test-sql-contract-serializer';
 import type { Contract } from './fixtures/contract.d';
@@ -221,14 +222,14 @@ test('integrated callback authoring exposes composition-shaped type helpers', ()
         models: {
           User: model('User', {
             fields: {
-              id: field.int().default(autoincrement()).id(),
-              email: field.text().unique(),
-              age: field.int(),
-              isActive: field.boolean().default(true),
-              score: field.float().optional(),
-              profile: field.json().optional(),
+              id: field.column(type.Int()).default(autoincrement()).id(),
+              email: field.column(type.String()).unique(),
+              age: field.column(type.Int()),
+              isActive: field.column(type.Boolean()).default(true),
+              score: field.column(type.Float()).optional(),
+              profile: field.column(type.Jsonb()).optional(),
               embedding: field.column(Embedding).optional(),
-              createdAt: field.temporal.createdAt(),
+              createdAt: field.column(type.temporal.CreatedAt()),
             },
           }).sql({
             table: 'user',
@@ -294,12 +295,16 @@ test('local field and belongsTo sql overlays stay typed', () => {
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
     },
-    ({ field }) => {
+    ({ field, gen, type }) => {
       const User = model('User', {
         fields: {
-          id: field.id.uuidv4String().sql({ id: { name: 'user_pkey' } }),
+          id: field
+            .column(type.Char(36))
+            .id()
+            .onCreate(gen.uuid())
+            .sql({ id: { name: 'user_pkey' } }),
           email: field
-            .text()
+            .column(type.String())
             .unique()
             .sql({ unique: { name: 'user_email_key' } }),
         },
@@ -307,8 +312,8 @@ test('local field and belongsTo sql overlays stay typed', () => {
 
       const Post = model('Post', {
         fields: {
-          id: field.id.uuidv4String(),
-          authorId: field.uuidString().sql({ column: 'author_id' }),
+          id: field.column(type.Char(36)).id().onCreate(gen.uuid()),
+          authorId: field.column(type.Char(36)).sql({ column: 'author_id' }),
         },
         relations: {
           author: rel
@@ -345,12 +350,12 @@ test('explicit generated id helpers stay typed', () => {
       target: postgresPack,
       createNamespace: postgresCreateNamespace,
     },
-    ({ field }) => {
+    ({ field, gen, type }) => {
       const ShortLink = model('ShortLink', {
         fields: {
-          id: field.id.nanoid({ size: 16 }, { name: 'short_link_pkey' }),
-          ownerId: field.uuidString(),
-          publicId: field.nanoid({ size: 16 }),
+          id: field.column(type.Char(16)).id({ name: 'short_link_pkey' }).onCreate(gen.nanoid(16)),
+          ownerId: field.column(type.Char(36)),
+          publicId: field.column(type.Char(16)),
         },
       }).sql({
         table: 'short_link',
@@ -364,17 +369,6 @@ test('explicit generated id helpers stay typed', () => {
           }
         | undefined
       >();
-
-      if (typecheckOnly) {
-        // @ts-expect-error uuidv7String helper accepts only an optional trailing PK-name object
-        field.id.uuidv7String({ size: 16 });
-
-        // @ts-expect-error nanoid size must be a number
-        field.id.nanoid({ size: '16' });
-
-        // @ts-expect-error scalar nanoid size must be a number
-        field.nanoid({ size: '16' });
-      }
 
       return { models: {} };
     },
@@ -598,7 +592,7 @@ test('read: non-enum fields keep their codec output, unchanged from main', () =>
   type Row = ResultType<typeof plan>;
   expectTypeOf<Row['id']>().toEqualTypeOf<number>();
   expectTypeOf<Row['email']>().toEqualTypeOf<string>();
-  expectTypeOf<Row['createdAt']>().toEqualTypeOf<Temporal.Instant>();
+  expectTypeOf<Row['createdAt']>().toEqualTypeOf<TemporalTypes.Instant>();
 });
 
 declare const createdAt: Temporal.Instant;

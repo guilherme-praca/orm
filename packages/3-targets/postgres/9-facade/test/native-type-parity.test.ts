@@ -156,9 +156,9 @@ const parityCases: readonly ParityCase[] = [
     expected: { ...numericOut, typeParams: {} },
   },
   {
-    title: 'Timestamp(3)',
-    bare: 'Timestamp(3)',
-    alias: 'Timestamp(3)',
+    title: 'TimestampTemporal(3)',
+    bare: 'TimestampTemporal(3)',
+    alias: 'TimestampTemporal(3)',
     expected: {
       dataType: 'pg/timestamp',
       codecId: 'pg/timestamp-temporal@1',
@@ -166,15 +166,15 @@ const parityCases: readonly ParityCase[] = [
     },
   },
   {
-    title: 'Timestamp — bare',
-    bare: 'Timestamp',
-    alias: 'Timestamp',
+    title: 'TimestampTemporal — bare',
+    bare: 'TimestampTemporal',
+    alias: 'TimestampTemporal',
     expected: { dataType: 'pg/timestamp', codecId: 'pg/timestamp-temporal@1', typeParams: {} },
   },
   {
-    title: 'Timestamptz(6)',
-    bare: 'Timestamptz(6)',
-    alias: 'Timestamptz(6)',
+    title: 'TimestamptzTemporal(6)',
+    bare: 'TimestamptzTemporal(6)',
+    alias: 'TimestamptzTemporal(6)',
     expected: {
       dataType: 'pg/timestamptz',
       codecId: 'pg/timestamptz-temporal@1',
@@ -182,9 +182,9 @@ const parityCases: readonly ParityCase[] = [
     },
   },
   {
-    title: 'Timestamptz — bare',
-    bare: 'Timestamptz',
-    alias: 'Timestamptz',
+    title: 'TimestamptzTemporal — bare',
+    bare: 'TimestamptzTemporal',
+    alias: 'TimestamptzTemporal',
     expected: { dataType: 'pg/timestamptz', codecId: 'pg/timestamptz-temporal@1', typeParams: {} },
   },
   {
@@ -306,11 +306,11 @@ const bitAndIntervalCases = [
   ['Bit(8)', 'pg/bit', 'pg/bit@1', { length: 8 }],
   ['VarBit', 'pg/varbit', 'pg/varbit@1', {}],
   ['VarBit(16)', 'pg/varbit', 'pg/varbit@1', { length: 16 }],
-  ['Interval', 'pg/interval', 'pg/interval@1', {}],
-  ['Interval(3)', 'pg/interval', 'pg/interval@1', { precision: 3 }],
+  ['IntervalParts', 'pg/interval', 'pg/interval@1', {}],
+  ['IntervalParts(3)', 'pg/interval', 'pg/interval@1', { precision: 3 }],
 ] as const;
 
-describe('Bit, VarBit and Interval', () => {
+describe('Bit, VarBit and IntervalParts', () => {
   it.each(bitAndIntervalCases)(
     '%s gives its codec and parameters as a scalar and as a list',
     (spelling, dataType, codecId, typeParams) => {
@@ -359,14 +359,14 @@ describe('native types as bare scalar types — parity with the live bare-type p
     }).toEqual({ types: undefined, viaAlias: expected, viaNamed: expected, direct: expected });
   });
 
-  it('lowers the Date updatedAt shorthand identically to explicit Date clock phases', () => {
+  it('lowers the Date UpdatedAt alias identically to explicit Date clock phases', () => {
     const shorthand = emit(`model sample {
       id Int @id
-      at temporal.updatedAtJsDate()
+      at temporal.UpdatedAtJsDate
     }`);
     const explicit = emit(`model sample {
       id Int @id
-      at temporal.timestamptzJsDate(onCreate: now, onUpdate: now)
+      at TimestamptzJsDate @onCreate(now()) @onUpdate(now())
     }`);
     expect(shorthand.ok).toBe(true);
     expect(explicit.ok).toBe(true);
@@ -379,14 +379,14 @@ describe('native types as bare scalar types — parity with the live bare-type p
     });
   });
 
-  it('lowers the Date createdAt shorthand identically to an explicit create clock phase', () => {
+  it('lowers the Date CreatedAt alias identically to an explicit create clock phase', () => {
     const result = emit(`model sample {
       id Int @id
-      at temporal.createdAtJsDate()
+      at temporal.CreatedAtJsDate
     }`);
     const explicit = emit(`model sample {
       id Int @id
-      at temporal.timestamptzJsDate(onCreate: now)
+      at TimestamptzJsDate @onCreate(now())
     }`);
     expect(result.ok).toBe(true);
     expect(explicit.ok).toBe(true);
@@ -399,6 +399,23 @@ describe('native types as bare scalar types — parity with the live bare-type p
       codecId: 'pg/timestamptz-date@1',
     });
     expect(column).not.toHaveProperty('default');
+  });
+
+  it('names the rewrite of a removed field preset through the SQL family', () => {
+    const result = emit(`model sample {
+  id Int @id
+  at temporal.timestamptzJsDate(3, onCreate: now)
+}
+`);
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.failure.diagnostics.map(({ code, message }) => ({ code, message }))).toEqual([
+      {
+        code: 'PSL_UNRESOLVED_REFERENCE',
+        message:
+          'temporal.timestamptzJsDate(3, onCreate: now) was a field preset, and Prisma 8 removed field presets. Write TimestamptzJsDate(3) @onCreate(now()).',
+      },
+    ]);
   });
 
   it('names Unsupported("x") as no Prisma 8 type through the SQL family', () => {
@@ -501,7 +518,7 @@ model sample {
   it('rejects a non-integer precision, which pg/int4 cannot hold', () => {
     const result = emit(`model sample {
   id Int @id
-  at Timestamp(1.5)
+  at TimestampTemporal(1.5)
 }
 `);
     expect(result.ok).toBe(false);

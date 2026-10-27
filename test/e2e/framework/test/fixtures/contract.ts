@@ -9,7 +9,7 @@ import {
   float8Column,
   int4Column,
   int8Column,
-  intervalColumn,
+  intervalPartsColumn,
   jsonbColumn,
   jsonColumn,
   numericColumn,
@@ -41,7 +41,7 @@ const profileSchema = type({
 
 export const contract = defineContract(
   { codecLookup: postgresCodecLookup, dataTypeLookup: postgresDataTypeLookup },
-  ({ field, model, rel }) => {
+  ({ field, model, rel, gen, type }) => {
     const UserBase = model('User', {
       fields: {
         id: field.column(int4Column).default(autoincrement()).id(),
@@ -106,17 +106,17 @@ export const contract = defineContract(
               .column('created_at'),
             startsAt: field.column(timeTemporalColumn(2)).optional().column('starts_at'),
             startsAtTz: field.column(timetzColumn(2)).optional().column('starts_at_tz'),
-            duration: field.column(intervalColumn(6)).optional().column('duration'),
+            duration: field.column(intervalPartsColumn(6)).optional().column('duration'),
           },
         }).sql({ table: 'param_types' }),
 
         Event: model('Event', {
           fields: {
-            id: field.id.uuidv7String(),
+            id: field.column(type.Char(36)).id().onCreate(gen.uuid(7)),
             name: field.column(textColumn),
             scheduledAt: field
               .column(timestamptzStringColumn)
-              .default({ kind: 'literal', value: '2024-01-15 10:30:00+00' })
+              .default({ kind: 'literal', value: '2024-01-15T10:30:00Z' })
               .column('scheduled_at'),
             createdAt: field.column(timestamptzTemporalColumn).default(now()).column('created_at'),
           },
