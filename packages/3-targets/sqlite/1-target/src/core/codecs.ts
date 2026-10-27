@@ -488,7 +488,6 @@ export class SqliteIntegerDescriptor extends SqliteCodecDescriptor<void> {
   }
   override readonly dataType = sqliteInteger.id;
   override readonly codecId = SQLITE_INTEGER_CODEC_ID;
-  override readonly integerRepresentation = 'number' as const;
   override readonly traits = ['equality', 'order', 'numeric'] as const;
   override readonly paramsSchema = undefined;
   override renderValueLiteral(value: JsonValue): string | undefined {
@@ -777,7 +776,6 @@ export class SqliteBigintDescriptor extends SqliteCodecDescriptor<void> {
   }
   override readonly dataType = sqliteInteger.id;
   override readonly codecId = SQLITE_BIGINT_CODEC_ID;
-  override readonly integerRepresentation = 'bigint' as const;
   override readonly traits = ['equality', 'order', 'numeric'] as const;
   override readonly paramsSchema = undefined;
   override renderValueLiteral(value: JsonValue): string | undefined {
@@ -844,7 +842,6 @@ export class SqliteBigintNumberDescriptor extends SqliteCodecDescriptor<void> {
   }
   override readonly dataType = sqliteInteger.id;
   override readonly codecId = SQLITE_BIGINT_NUMBER_CODEC_ID;
-  override readonly integerRepresentation = 'number' as const;
   override readonly traits = ['equality', 'order', 'numeric'] as const;
   override readonly paramsSchema = undefined;
   override renderValueLiteral(value: JsonValue): string | undefined {

@@ -40,10 +40,7 @@ import type { EnumTypeHandle } from './enum-type';
 export type PublicCodecTypes<CodecTypes extends Record<string, { readonly output: unknown }>> = {
   readonly [CodecId in keyof CodecTypes]: Pick<
     CodecTypes[CodecId],
-    Extract<
-      keyof CodecTypes[CodecId],
-      'input' | 'output' | 'traits' | 'keepsWrittenForm' | 'integerRepresentation'
-    >
+    Extract<keyof CodecTypes[CodecId], 'input' | 'output' | 'traits' | 'keepsWrittenForm'>
   >;
 };
 
