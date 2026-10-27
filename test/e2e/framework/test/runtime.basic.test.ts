@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 describe('end-to-end basic queries', () => {
   const configPath = resolve(__dirname, 'fixtures/prisma.config.ts');
-  const cliPath = createRequire(import.meta.url).resolve('@repo/prisma-cli/bin/prisma.mjs');
+  const cliPath = createRequire(import.meta.url).resolve('@repo/prisma-bin/bin/prisma.mjs');
   const contractJsonPath = resolve(__dirname, 'fixtures/generated/contract.json');
 
   it(

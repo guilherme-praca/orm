@@ -87,10 +87,6 @@
       "types": "./dist/exports/init-output.d.mts",
       "import": "./dist/exports/init-output.mjs"
     },
-    "./standalone": {
-      "types": "./dist/exports/standalone.d.mts",
-      "import": "./dist/exports/standalone.mjs"
-    },
     "./migration-cli": {
       "types": "./dist/migration-cli.d.mts",
       "import": "./dist/migration-cli.mjs"

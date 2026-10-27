@@ -82,9 +82,6 @@ importers:
       '@cursor/sdk':
         specifier: ^1.0.26
         version: 1.0.27
-      '@internal/cli':
-        specifier: workspace:8.0.0-rc.20
-        version: link:packages/1-framework/3-tooling/cli
       '@internal/framework-components':
         specifier: workspace:8.0.0-rc.20
         version: link:packages/1-framework/1-core/framework-components
@@ -203,9 +200,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/tsconfig':
         specifier: workspace:8.0.0-rc.20
         version: link:../../packages/0-config/tsconfig
@@ -249,9 +246,9 @@ importers:
       '@prisma/management-api-sdk':
         specifier: ^1.76.0
         version: 1.76.0
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -304,9 +301,9 @@ importers:
       '@prisma/dev':
         specifier: 'catalog:'
         version: 0.25.2(typescript@5.9.3)(vite@8.1.4(@types/node@26.1.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -356,9 +353,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/tsconfig':
         specifier: workspace:8.0.0-rc.20
         version: link:../../packages/0-config/tsconfig
@@ -402,9 +399,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -451,9 +448,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -491,9 +488,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -540,9 +537,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/tsconfig':
         specifier: workspace:8.0.0-rc.20
         version: link:../../packages/0-config/tsconfig
@@ -598,9 +595,9 @@ importers:
       '@prisma/dev':
         specifier: 'catalog:'
         version: 0.25.2(typescript@5.9.3)(vite@8.1.4(@types/node@26.1.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -656,9 +653,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/tsconfig':
         specifier: workspace:8.0.0-rc.20
         version: link:../../packages/0-config/tsconfig
@@ -690,9 +687,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/tsconfig':
         specifier: workspace:8.0.0-rc.20
         version: link:../../packages/0-config/tsconfig
@@ -742,9 +739,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -783,7 +780,7 @@ importers:
         version: 7.10.0
       '@prisma/client':
         specifier: 7.10.0
-        version: 7.10.0(prisma@test+prisma-cli)(typescript@5.9.3)
+        version: 7.10.0(prisma@test+prisma-bin)(typescript@5.9.3)
       '@prisma/orm-postgres':
         specifier: workspace:8.0.0-rc.20
         version: link:../../packages/9-public/@prisma/orm-postgres
@@ -816,8 +813,8 @@ importers:
         specifier: 'catalog:'
         version: 8.20.4
       prisma:
-        specifier: workspace:@repo/prisma-cli@8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        specifier: workspace:@repo/prisma-bin@8.0.0-rc.20
+        version: link:../../test/prisma-bin
       tsx:
         specifier: 'catalog:'
         version: 4.23.12
@@ -867,9 +864,9 @@ importers:
       '@react-router/dev':
         specifier: ^8.1.0
         version: 8.3.0(@react-router/serve@8.3.0(react-router@8.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3))(react-router@8.3.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(typescript@5.9.3)(vite@8.1.4(@types/node@26.1.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))(wrangler@4.120.0(@cloudflare/workers-types@5.20260804.1))
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -970,9 +967,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -1022,9 +1019,9 @@ importers:
       '@prisma/cli-engine':
         specifier: 0.9.0
         version: 0.9.0(@prisma/management-api-sdk@1.76.0)(magicast@0.5.4)
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../test/prisma-cli
+        version: link:../../test/prisma-bin
       '@repo/test-utils':
         specifier: workspace:8.0.0-rc.20
         version: link:../../test/utils
@@ -5869,9 +5866,9 @@ importers:
         specifier: 'catalog:'
         version: 2.2.7
     devDependencies:
-      '@repo/prisma-cli':
+      '@repo/prisma-bin':
         specifier: workspace:8.0.0-rc.20
-        version: link:../../prisma-cli
+        version: link:../../prisma-bin
       '@repo/tsconfig':
         specifier: workspace:8.0.0-rc.20
         version: link:../../../packages/0-config/tsconfig
@@ -6363,7 +6360,7 @@ importers:
         specifier: 'catalog:'
         version: 8.22.0
 
-  test/prisma-cli:
+  test/prisma-bin:
     dependencies:
       '@prisma/orm-toolchain':
         specifier: workspace:8.0.0-rc.20
@@ -13881,11 +13878,11 @@ snapshots:
 
   '@prisma/client-runtime-utils@7.10.0': {}
 
-  '@prisma/client@7.10.0(prisma@test+prisma-cli)(typescript@5.9.3)':
+  '@prisma/client@7.10.0(prisma@test+prisma-bin)(typescript@5.9.3)':
     dependencies:
       '@prisma/client-runtime-utils': 7.10.0
     optionalDependencies:
-      prisma: link:test/prisma-cli
+      prisma: link:test/prisma-bin
       typescript: 5.9.3
 
   '@prisma/compute-sdk@0.43.0(@prisma/management-api-sdk@1.76.0)(encoding@0.1.13)(rollup@4.59.0)':

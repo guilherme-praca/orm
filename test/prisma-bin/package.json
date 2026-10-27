@@ -1,5 +1,5 @@
 {
-  "name": "@repo/prisma-cli",
+  "name": "@repo/prisma-bin",
   "version": "8.0.0-rc.20",
   "private": true,
   "type": "module",

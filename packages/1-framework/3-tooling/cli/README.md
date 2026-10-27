@@ -3,8 +3,8 @@
 > **For the CLI command, install [`@prisma/cli`](https://www.npmjs.com/package/@prisma/cli) (`@next` dist-tag).**
 > The unified `prisma` binary mounts this package's `orm` command family;
 > the standalone npm package is no longer published. Inside this
-> workspace, examples and apps run `prisma` from `@repo/prisma-cli`
-> (`test/prisma-cli`), which loads this package from the built
+> workspace, examples and apps run `prisma` from `@repo/prisma-bin`
+> (`test/prisma-bin`), which loads this package from the built
 > `@prisma/orm-toolchain` so the CLI and the project share one framework copy.
 > This package's own `dist/bin.mjs` runs the CLI from source, for its tests.
 >
@@ -42,7 +42,7 @@ Provide a command-line interface that:
 - **File I/O**: Read TS contracts, write emitted artifacts (`contract.json`, `contract.d.ts`)
 - **Extension Pack Descriptor Assembly**: Collect adapter and extension descriptors for emission
 - **Config Management**: Load and validate `prisma.config.ts` files using Arktype validation
-- **Workspace-local bin**: Build emits `dist/bin.mjs`, the engine entry this package's tests spawn. Examples and apps run `@repo/prisma-cli` instead, which calls `runOrmCli` from `@prisma/orm-toolchain/cli/standalone` (the published toolchain ships no bin; the unified `prisma` CLI mounts the family instead)
+- **Workspace-local bin**: Build emits `dist/bin.mjs`, the engine entry this package's tests spawn. Examples and apps run `@repo/prisma-bin` instead, which calls `runOrmBin` from `@prisma/orm-toolchain/cli` (the published toolchain ships no bin; the unified `prisma` CLI mounts the family instead)
 
 ### Wiring validation
 
@@ -1585,9 +1585,8 @@ Operations return structured result types:
 
 The CLI package exports several subpaths for different use cases:
 
-- **`@internal/cli`** (main export): Exports `loadContractFromTs` and `createContractEmitCommand`
+- **`@internal/cli`** (main export): Exports `loadContractFromTs`, and `runOrmBin`, which runs the CLI as the process's `prisma` command; `src/bin.ts` and the workspace bin in `test/prisma-bin` call it
 - **`@internal/cli/config-types`**: Exports `defineConfig` and config types
-- **`@internal/cli/standalone`**: Exports `runOrmCli`, which runs the CLI against a process; published as `@prisma/orm-toolchain/cli/standalone` for the workspace `prisma` bin in `test/prisma-cli`
 - **`@internal/cli/control-api`**: Exports `createControlClient` and control API types
 - **`@internal/cli/commands/db-init`**: Exports `createDbInitCommand`
 - **`@internal/cli/commands/db-update`**: Exports `createDbUpdateCommand`

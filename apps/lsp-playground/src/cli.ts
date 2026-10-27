@@ -46,7 +46,7 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 function resolveCliEntry(): string {
-  return createRequire(import.meta.url).resolve('@repo/prisma-cli/bin/prisma.mjs');
+  return createRequire(import.meta.url).resolve('@repo/prisma-bin/bin/prisma.mjs');
 }
 
 async function main(): Promise<void> {

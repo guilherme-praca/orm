@@ -46,11 +46,9 @@ const WORKSPACE_CLI_BIN = join(WORKSPACE_ROOT, 'packages/1-framework/3-tooling/c
  * project's `@prisma/orm-*` packages load one framework copy, as a user's do.
  */
 const PROJECT_CLI_FILE = 'prisma-cli.mjs';
-const PROJECT_CLI_SOURCE = `import process from 'node:process';
-import { runOrmCli } from '@prisma/orm-toolchain/cli/standalone';
+const PROJECT_CLI_SOURCE = `import { runOrmBin } from '@prisma/orm-toolchain/cli';
 
-process.exitCode = await runOrmCli(process);
-process.stdin.unref?.();
+await runOrmBin();
 `;
 
 /**
