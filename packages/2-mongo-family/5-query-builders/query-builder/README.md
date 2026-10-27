@@ -4,12 +4,13 @@ A typed CRUD query builder for MongoDB contracts. Reads, writes, pipeline aggreg
 
 ## Quick start
 
-Applications use `mongoQuery` from `@prisma/orm-mongo/query-builder`, which validates the contract first. This package's builder, `mongoQueryOnValidatedContract`, lives on the internal entry `@internal/mongo-query-builder/internal/on-validated-contract` (published as `@prisma/orm-family-mongo/query-builder/internal/on-validated-contract`). It does not validate: pass it only a contract that is already validated, such as one from `contractFromJson`.
+`mongoQuery({ context })` takes an execution context, as `sql({ context })` does. Applications get the builder as `mongoStatic({ contract }).query` or `db.query`, whose context holds the contract `mongoStatic()` or `mongo()` validated.
 
 ```typescript
-import { acc, mongoQuery } from '@prisma/orm-mongo/query-builder';
+import { acc } from '@prisma/orm-mongo/query-builder';
+import mongoStatic from '@prisma/orm-mongo/static';
 
-const q = mongoQuery({ contract });
+const q = mongoStatic({ contract }).query;
 
 // Read — aggregation pipeline
 const analytics = q
@@ -111,7 +112,7 @@ The chain has three steps:
 
 The result-row encoding uses a `ModelArrayField<ModelName>` marker so `ResolveRow` produces `Array<ForeignRow>` — the field is **not** `unknown[]`. Marker behaviour is unchanged from the legacy shape: clears `UpdateEnabled` and `FindAndModifyEnabled`, sets `LeadingMatch` to `'past-leading'`, preserves the nested-shape parameter `N`.
 
-**Limitation.** Typoed root names (`from('usexxxrs')`) are currently accepted at compile time and rejected at runtime. The constraint is a pre-existing limitation of `Contract.roots: Record<string, string>` (shared with `mongoQueryOnValidatedContract.from('badname')`); compile-time rejection is tracked under [TML-2400](https://linear.app/prisma-company/issue/TML-2400).
+**Limitation.** Typoed root names (`from('usexxxrs')`) are currently accepted at compile time and rejected at runtime. The constraint is a pre-existing limitation of `Contract.roots: Record<string, string>` (shared with `mongoQuery.from('badname')`); compile-time rejection is tracked under [TML-2400](https://linear.app/prisma-company/issue/TML-2400).
 
 ## Field accessor
 

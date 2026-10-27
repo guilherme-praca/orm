@@ -9,12 +9,12 @@ This page is a working reference: a concrete example to ground the mental model,
 Imagine an `orders` collection where each document has `customerId`, `amount`, and `status`. We want the top ten customers by total spend on active orders:
 
 ```ts
-import { contractFromJson } from '@prisma/orm-mongo/static';
-import { acc, mongoQuery } from '@prisma/orm-mongo/query-builder';
+import mongoStatic, { contractFromJson } from '@prisma/orm-mongo/static';
+import { acc } from '@prisma/orm-mongo/query-builder';
 import type { Contract } from './contract';
 import contractJson from './contract.json' with { type: 'json' };
 
-const query = mongoQuery({ contract: contractFromJson<Contract>(contractJson) });
+const { query } = mongoStatic({ contract: contractFromJson<Contract>(contractJson) });
 
 const plan = query
   .from('orders')

@@ -69,7 +69,6 @@
     "./contract-builder": "./dist/contract-builder.mjs",
     "./control": "./dist/control.mjs",
     "./family": "./dist/family.mjs",
-    "./query-builder": "./dist/query-builder.mjs",
     "./runtime": "./dist/runtime.mjs",
     "./static": "./dist/static.mjs",
     "./target": "./dist/target.mjs",

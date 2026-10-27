@@ -23,11 +23,11 @@ import {
   MongoVectorSearchStage,
 } from '@internal/mongo-query-ast/execution';
 import { describe, expect, it } from 'vitest';
-import { mongoQueryOnValidatedContract } from '../src/query';
+import { mongoQuery } from '../src/query';
 import { testContract } from './fixtures/test-contract';
 
 function createOrdersBuilder() {
-  return mongoQueryOnValidatedContract({ contract: testContract }).from('orders');
+  return mongoQuery({ context: { contract: testContract } }).from('orders');
 }
 
 describe('new stage builder methods', () => {

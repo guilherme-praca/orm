@@ -2,12 +2,12 @@ import { InsertOneCommand } from '@internal/mongo-query-ast/execution';
 import { isStructuredError } from '@internal/utils/structured-error';
 import { describe, expect, it } from 'vitest';
 import type { PipelineChain } from '../src/builder';
-import { mongoQueryOnValidatedContract } from '../src/query';
+import { mongoQuery } from '../src/query';
 import type { ModelToDocShape } from '../src/types';
 import type { TContract } from './fixtures/test-contract';
 import { testContract, testContractJson } from './fixtures/test-contract';
 
-const orders = () => mongoQueryOnValidatedContract({ contract: testContract }).from('orders');
+const orders = () => mongoQuery({ context: { contract: testContract } }).from('orders');
 
 type FamReachableChain = PipelineChain<
   TContract,
@@ -51,7 +51,7 @@ describe('structured error codes', () => {
   });
 
   it('raises ORM.MODEL_UNKNOWN for an unknown root', () => {
-    const p = mongoQueryOnValidatedContract({ contract: testContract });
+    const p = mongoQuery({ context: { contract: testContract } });
     expect(codeOf(() => p.from('nonexistent' as 'orders'))).toBe('ORM.MODEL_UNKNOWN');
   });
 
@@ -63,13 +63,13 @@ describe('structured error codes', () => {
         orders: { $ref: '#/domain/models/Ghost', model: 'Ghost' },
       },
     };
-    const p = mongoQueryOnValidatedContract({ contract: patched as unknown as TContract });
+    const p = mongoQuery({ context: { contract: patched as unknown as TContract } });
     expect(codeOf(() => p.from('orders'))).toBe('CONTRACT.MODEL_UNKNOWN');
   });
 
   it('raises CONTRACT.VALIDATION_FAILED when the contract has no storageHash', () => {
-    const p = mongoQueryOnValidatedContract({
-      contract: { ...testContract, storage: {} } as unknown as TContract,
+    const p = mongoQuery({
+      context: { contract: { ...testContract, storage: {} } as unknown as TContract },
     });
     expect(codeOf(() => p.rawCommand(new InsertOneCommand('orders', { status: 'new' })))).toBe(
       'CONTRACT.VALIDATION_FAILED',

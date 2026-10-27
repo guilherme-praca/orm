@@ -81,7 +81,7 @@ describe('mongo-demo cache middleware integration', {
       executor: runtime,
       enums: buildMongoEnums(contract, context.codecs),
     });
-    const query = mongoQuery({ contract });
+    const query = mongoQuery({ context });
     return { runtime, orm, query, driver, driverExecuteSpy };
   }
 

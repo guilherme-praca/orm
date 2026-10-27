@@ -1,6 +1,6 @@
 // Intentionally uses verbose mongo-contract-ts import: @internal/mongo/contract-builder's
 // defineContract wrap loses inline-model inference precision when consumers use
-// mongoQueryOnValidatedContract<typeof contract> chains (PlanRow row shapes collapse to _id: never / count: never).
+// mongoQuery<typeof contract> chains (PlanRow row shapes collapse to _id: never / count: never).
 // Tracked at https://linear.app/prisma-company/issue/TML-2633 — migrate to the facade form
 // once TML-2633 lands.
 
@@ -14,8 +14,7 @@ import type {
 } from '@internal/mongo-contract';
 import { defineContract, field, model, rel } from '@internal/mongo-contract-ts/contract-builder';
 import type { MongoQueryPlan } from '@internal/mongo-query-ast/execution';
-import { acc, fn } from '@internal/mongo-query-builder';
-import { mongoQueryOnValidatedContract } from '@internal/mongo-query-builder/internal/on-validated-contract';
+import { acc, fn, mongoQuery } from '@internal/mongo-query-builder';
 import mongoTargetPack from '@internal/target-mongo/pack';
 import { timeouts } from '@repo/test-utils';
 import { ObjectId } from 'mongodb';
@@ -181,7 +180,7 @@ const contract = defineContract({
 });
 
 describe('pipeline builder integration', { timeout: timeouts.spinUpMongoMemoryServer }, () => {
-  const p = mongoQueryOnValidatedContract({ contract: contractFromJson<TContract>(contractJson) });
+  const p = mongoQuery({ context: { contract: contractFromJson<TContract>(contractJson) } });
 
   it('match → group → sort → limit analytics query', async () => {
     await withMongod(async (ctx) => {
@@ -359,7 +358,7 @@ describe('pipeline builder integration', { timeout: timeouts.spinUpMongoMemorySe
         },
       ]);
 
-      const plan = mongoQueryOnValidatedContract({ contract })
+      const plan = mongoQuery({ context: { contract } })
         .from('tasks')
         .group((f) => ({
           _id: f.type,

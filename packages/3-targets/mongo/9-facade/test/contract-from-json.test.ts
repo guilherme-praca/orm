@@ -46,6 +46,24 @@ describe('contractFromJson', () => {
   });
 });
 
+describe('the query builder of a static context', () => {
+  it('is never built for a malformed contract, because mongoStatic validates it first', () => {
+    expect(() => mongoStatic({ contract: { target: 'mongo' } as unknown as Contract })).toThrow(
+      expect.objectContaining({ code: 'CONTRACT.VALIDATION_FAILED' }),
+    );
+  });
+
+  it('builds queries over the contract of its context', () => {
+    const { query, contract } = mongoStatic({ contract: authoredContract() });
+    const root = Object.keys(contract.roots)[0] as keyof typeof contract.roots & string;
+
+    expect(query.from(root).build()).toMatchObject({
+      collection: 'accounts',
+      meta: { storageHash: contract.storage.storageHash, lane: 'mongo-query' },
+    });
+  });
+});
+
 describe('validating a contract once', () => {
   it('validates a contractFromJson value once for every client built from it', () => {
     const deserialize = vi.spyOn(MongoContractSerializer.prototype, 'deserializeContract');

@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   deserializeContract: vi.fn(),
   mongoOrm: vi.fn(),
   mongoRaw: vi.fn(),
-  mongoQueryOnValidatedContract: vi.fn(),
+  mongoQuery: vi.fn(),
 }));
 
 vi.mock('@internal/adapter-mongo/runtime', () => ({ default: { id: 'adapter' } }));
@@ -47,8 +47,8 @@ vi.mock('@internal/mongo-orm', () => ({
   mongoOrm: mocks.mongoOrm,
   mongoRaw: mocks.mongoRaw,
 }));
-vi.mock('@internal/mongo-query-builder/internal/on-validated-contract', () => ({
-  mongoQueryOnValidatedContract: mocks.mongoQueryOnValidatedContract,
+vi.mock('@internal/mongo-query-builder', () => ({
+  mongoQuery: mocks.mongoQuery,
 }));
 
 import { resolveMongoBinding, resolveOptionalMongoBinding } from '../src/runtime/binding';
@@ -190,7 +190,7 @@ describe('facade lifecycle structured codes', () => {
     });
     mocks.createMongoRuntime.mockReturnValue({ id: 'runtime' });
     mocks.mongoOrm.mockReturnValue({ id: 'orm' });
-    mocks.mongoQueryOnValidatedContract.mockReturnValue({ id: 'query' });
+    mocks.mongoQuery.mockReturnValue({ id: 'query' });
     mocks.mongoRaw.mockReturnValue({ id: 'raw' });
   });
 

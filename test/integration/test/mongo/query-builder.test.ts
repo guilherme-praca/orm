@@ -19,8 +19,7 @@ import {
   MongoRedactStage,
   MongoSortStage,
 } from '@internal/mongo-query-ast/execution';
-import { acc, fn } from '@internal/mongo-query-builder';
-import { mongoQueryOnValidatedContract } from '@internal/mongo-query-builder/internal/on-validated-contract';
+import { acc, fn, mongoQuery } from '@internal/mongo-query-builder';
 import { describe, expect, it } from 'vitest';
 import { describeWithMongoDB } from './setup';
 
@@ -195,9 +194,7 @@ const contractJson = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const query = mongoQueryOnValidatedContract({
-  contract: contractFromJson<TContract>(contractJson),
-});
+const query = mongoQuery({ context: { contract: contractFromJson<TContract>(contractJson) } });
 
 function products() {
   return query.from('products');
@@ -259,7 +256,7 @@ const ORDERS = [
 // Tests
 // ---------------------------------------------------------------------------
 
-describeWithMongoDB('Pipeline builder integration (mongoQueryOnValidatedContract DSL)', (ctx) => {
+describeWithMongoDB('Pipeline builder integration (mongoQuery DSL)', (ctx) => {
   async function seed() {
     const db = ctx.client.db(ctx.dbName);
     await db.collection('products').insertMany(PRODUCTS.map((p) => ({ ...p })));
