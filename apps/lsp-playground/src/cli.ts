@@ -46,8 +46,7 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 function resolveCliEntry(): string {
-  const manifest = createRequire(import.meta.url).resolve('@repo/prisma-cli/package.json');
-  return resolve(dirname(manifest), 'bin/prisma.mjs');
+  return createRequire(import.meta.url).resolve('@repo/prisma-cli/bin/prisma.mjs');
 }
 
 async function main(): Promise<void> {
