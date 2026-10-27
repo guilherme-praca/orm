@@ -113,7 +113,7 @@ Each place that needs a field's codec resolves the field's call first, including
 ### What the tools write
 
 `contract infer` reads a database and `contract print` reads a contract, and neither knows which kind of type the user wrote. Both write a convenience call wherever one gives the column's explicit type, and the explicit type otherwise:
-1. For each database type, one explicit type is marked `inferred`: the one its convenience default gives. Infer and the Prisma 7 schema reader pick that type for a column.
+1. For each database type, one explicit type is marked `inferred`: the one its convenience default gives. Infer and the Prisma 7 schema reader pick that type for a column. If that type cannot read the column's own default, such as `infinity` for a `Date`, infer picks the type of the same convenience type that can, so it never writes a field whose default fails to read.
 2. To write the call for an explicit type, the tools find the row that names it, build the arguments from the row, and drop those equal to the defaults.
 3. They resolve the call again and keep it only if it gives the same codec and parameters.
 
@@ -213,4 +213,4 @@ The PostgreSQL target ships two type aliases (ADR 275), in the namespace `tempor
 
 **A Prisma-owned value for calendar dates, times and durations, or a branded string.** A class is one more date API, does not survive JSON, and duplicates Temporal. A branded string forces every write through a helper or a cast and catches nothing the codec doesn't.
 
-**Infer the string types for columns a `Date` cannot hold exactly.** Nothing is lost, but the schema would differ from what a user would write for the same model; infer takes the default.
+**Infer the string types for columns whose values have more digits than a `Date` holds.** Nothing is lost, but the schema would differ from what a user would write for the same model; infer takes the default, which reads those values with the extra digits dropped. A default the type cannot read at all is different: the row would fail to read, so infer picks a type that reads it.
