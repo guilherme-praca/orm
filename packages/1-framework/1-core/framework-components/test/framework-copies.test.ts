@@ -19,7 +19,7 @@ import type {
 } from '../src/execution/execution-descriptors';
 import { createExecutionStack } from '../src/execution/execution-stack';
 import { type DataTypeId, type DataTypeValue, requireValueOf } from '../src/shared/data-type';
-import { assertOneFrameworkCopy, registerFrameworkCopy } from '../src/shared/framework-copies';
+import { assertOneFrameworkCopy } from '../src/shared/framework-copies';
 
 const packageRoot = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const packageVersion: unknown = JSON.parse(
@@ -39,6 +39,43 @@ function recordedCopies(): Set<string> {
 
 async function loadSecondCopy(): Promise<void> {
   await import(/* @vite-ignore */ pathToFileURL(copyModule).href);
+}
+
+/** Records `moduleUrl` the way a copy whose `framework-copies` module sits there records itself. */
+function recordCopyAt(moduleUrl: string): void {
+  recordedCopies().add(moduleUrl);
+}
+
+/**
+ * A copy of the framework split into files, as an application bundle splits it, under a
+ * `package.json` that is not the framework's: `framework-copies.ts` and `runtime-error.ts`, plus
+ * `codec.ts`, a module that registers the copy as the codec module does. `framework-copies.ts`
+ * evaluates `moduleUrl` in place of `import.meta.url`. Returns the URL of `codec.ts`.
+ */
+function splitCopy(folder: string, moduleUrl = 'import.meta.url'): string {
+  const dir = join(scratch, folder);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'my-app', version: '1.4.2' }));
+  const source = readFileSync(
+    new URL('../src/shared/framework-copies.ts', import.meta.url),
+    'utf-8',
+  );
+  writeFileSync(
+    join(dir, 'framework-copies.ts'),
+    source.replace(
+      'const thisModuleUrl: unknown = import.meta.url;',
+      `const thisModuleUrl: unknown = ${moduleUrl};`,
+    ),
+  );
+  copyFileSync(
+    new URL('../src/shared/runtime-error.ts', import.meta.url),
+    join(dir, 'runtime-error.ts'),
+  );
+  writeFileSync(
+    join(dir, 'codec.ts'),
+    "import { registerFrameworkCopy } from './framework-copies';\n\nregisterFrameworkCopy();\n",
+  );
+  return pathToFileURL(join(dir, 'codec.ts')).href;
 }
 
 /** A package folder holding `manifest`, returning the file URL of a module inside its `dist`. */
@@ -115,18 +152,32 @@ describe('framework copies', () => {
     expect(() => assertOneFrameworkCopy()).not.toThrow();
   });
 
-  it('counts the modules of one package folder as one copy', () => {
-    registerFrameworkCopy(new URL('../src/shared/data-type.ts', import.meta.url).href);
-    registerFrameworkCopy(new URL('../src/shared/codec.ts?t=1', import.meta.url).href);
+  it('counts URLs inside one framework package folder as one copy', () => {
+    recordCopyAt(new URL('../src/shared/data-type.ts', import.meta.url).href);
+    recordCopyAt(new URL('../src/shared/codec.ts', import.meta.url).href);
 
     expect(() => assertOneFrameworkCopy()).not.toThrow();
   });
 
+  it('counts a copy split into files with no framework package.json once', async () => {
+    await import(/* @vite-ignore */ splitCopy('split'));
+
+    expect(refusal()).toMatchObject({
+      message: `Prisma ORM is loaded from 2 copies (${packageVersion}, unknown version)`,
+      details: {
+        copies: [
+          { folder: packageRoot, version: packageVersion },
+          { folder: join(scratch, 'split', 'framework-copies.ts') },
+        ],
+      },
+    });
+  });
+
   it('counts two modules of another framework package folder as one more copy', () => {
-    registerFrameworkCopy(
+    recordCopyAt(
       packageModule('nested', { name: '@prisma/orm-framework', version: '8.0.0-rc.99' }, 'a.mjs'),
     );
-    registerFrameworkCopy(
+    recordCopyAt(
       packageModule('nested', { name: '@prisma/orm-framework', version: '8.0.0-rc.99' }, 'b.mjs'),
     );
 
@@ -150,7 +201,7 @@ describe('framework copies', () => {
 
   it("skips a manifest that is not the framework's, such as an application's", () => {
     const bundle = packageModule('app', { name: 'my-app', version: '1.4.2' }, 'server.mjs');
-    registerFrameworkCopy(bundle);
+    recordCopyAt(bundle);
 
     expect(refusal()).toMatchObject({
       message: `Prisma ORM is loaded from 2 copies (${packageVersion}, unknown version)`,
@@ -164,23 +215,43 @@ describe('framework copies', () => {
   });
 
   it('says to reinstall when every copy is one version', () => {
-    registerFrameworkCopy(
+    recordCopyAt(
       packageModule('same', { name: '@prisma/orm-framework', version: packageVersion }, 'a.mjs'),
     );
 
     const fix = Reflect.get(Object(refusal()), 'fix');
     expect(fix).toContain('deleting node_modules and the lockfile');
+    expect(fix).toContain('differ by their peer dependencies');
     expect(fix).not.toContain('Install the same version');
   });
 
-  it('records nothing for a module without a URL', () => {
-    registerFrameworkCopy(undefined);
+  it('refuses three folders of one version', () => {
+    for (const folder of ['same-a', 'same-b']) {
+      recordCopyAt(
+        packageModule(folder, { name: '@prisma/orm-framework', version: packageVersion }, 'a.mjs'),
+      );
+    }
+
+    expect(refusal()).toMatchObject({
+      message: `Prisma ORM is loaded from 3 copies (${packageVersion}, ${packageVersion}, ${packageVersion})`,
+      details: {
+        copies: [
+          { folder: packageRoot, version: packageVersion },
+          { folder: join(scratch, 'same-a'), version: packageVersion },
+          { folder: join(scratch, 'same-b'), version: packageVersion },
+        ],
+      },
+    });
+  });
+
+  it('records nothing for a module without a URL', async () => {
+    await import(/* @vite-ignore */ splitCopy('no-url', 'undefined'));
 
     expect(() => assertOneFrameworkCopy()).not.toThrow();
   });
 
   it('names a module URL that does not parse instead of failing to describe it', () => {
-    registerFrameworkCopy('not a url');
+    recordCopyAt('not a url');
 
     expect(refusal()).toMatchObject({
       code: 'RUNTIME.MULTIPLE_ORM_COPIES',
@@ -203,7 +274,7 @@ describe('framework copies', () => {
     });
 
     it('reports the copies when another copy is loaded', () => {
-      registerFrameworkCopy('not a url');
+      recordCopyAt('not a url');
 
       expect(handedValue).toThrow(expect.objectContaining({ code: 'RUNTIME.MULTIPLE_ORM_COPIES' }));
     });

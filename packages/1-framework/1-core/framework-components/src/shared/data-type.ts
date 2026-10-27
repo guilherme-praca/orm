@@ -23,7 +23,7 @@ import { assertOneFrameworkCopy, registerFrameworkCopy } from './framework-copie
 import { refuseJsonValue } from './json-readers';
 import { runtimeError } from './runtime-error';
 
-registerFrameworkCopy(import.meta.url);
+registerFrameworkCopy();
 
 /**
  * The identity of a data type: `owner/name`, with no version. A type's identity does not change;

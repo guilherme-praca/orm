@@ -50,20 +50,22 @@ function withoutQueryOrHash(url: string): string {
   return location.href;
 }
 
+const thisModuleUrl: unknown = import.meta.url;
+
 /**
- * Records that the framework module at `moduleUrl` has loaded. Every module whose values another
- * copy would not recognise calls this with its own `import.meta.url`; {@link assertOneFrameworkCopy}
- * then counts the package folders those modules came from. A host that gives modules no URL
- * records nothing.
+ * Records that this copy of the framework has loaded. A copy is identified by the URL of this
+ * module, which each copy has exactly one of however its other modules are split into files.
+ * Modules whose values another copy would not recognise call it, so loading any of them records
+ * the copy. A host that gives modules no URL records nothing.
  */
-export function registerFrameworkCopy(moduleUrl: string | undefined): void {
-  if (typeof moduleUrl !== 'string') {
+export function registerFrameworkCopy(): void {
+  if (typeof thisModuleUrl !== 'string') {
     return;
   }
-  recordedModuleUrls().add(withoutQueryOrHash(moduleUrl));
+  recordedModuleUrls().add(withoutQueryOrHash(thisModuleUrl));
 }
 
-registerFrameworkCopy(import.meta.url);
+registerFrameworkCopy();
 
 function nodeFs(): FileReader | undefined {
   return globalThis.process?.getBuiltinModule?.('node:fs');
@@ -94,8 +96,21 @@ function frameworkVersionAt(fs: FileReader, folder: URL): string | undefined {
   }
 }
 
-/** The framework package folder `moduleUrl` belongs to; the module itself when no framework `package.json` encloses it. */
+const describedCopies = new Map<string, FrameworkCopy>();
+
+/** The framework package folder `moduleUrl` belongs to, read once per URL. */
 function copyOf(moduleUrl: string): FrameworkCopy {
+  const described = describedCopies.get(moduleUrl);
+  if (described !== undefined) {
+    return described;
+  }
+  const copy = describeCopy(moduleUrl);
+  describedCopies.set(moduleUrl, copy);
+  return copy;
+}
+
+/** The framework package folder `moduleUrl` belongs to; the module itself when no framework `package.json` encloses it. */
+function describeCopy(moduleUrl: string): FrameworkCopy {
   const location = parsedUrl(moduleUrl);
   if (location === undefined) {
     return { folder: moduleUrl };
@@ -117,8 +132,12 @@ function copyOf(moduleUrl: string): FrameworkCopy {
 
 /** Every framework copy loaded so far, one per package folder. */
 function loadedFrameworkCopies(): readonly FrameworkCopy[] {
+  const urls = recordedModuleUrls();
+  if (urls.size <= 1) {
+    return [];
+  }
   const byFolder = new Map<string, FrameworkCopy>();
-  for (const url of recordedModuleUrls()) {
+  for (const url of urls) {
     const copy = copyOf(url);
     if (!byFolder.has(copy.folder)) {
       byFolder.set(copy.folder, copy);
@@ -142,7 +161,7 @@ function fixFor(copies: readonly FrameworkCopy[]): string {
   const versions = new Set(copies.map((copy) => copy.version));
   const [onlyVersion] = versions;
   if (versions.size === 1 && onlyVersion !== undefined) {
-    return `Every copy is ${onlyVersion}, so the package manager installed one version more than once. Reinstall so it keeps one copy, for example by deleting node_modules and the lockfile and installing again. ${findCopies}`;
+    return `Every copy is ${onlyVersion}, so the package manager installed one version more than once. Reinstall so it keeps one copy, for example by deleting node_modules and the lockfile and installing again. With pnpm, copies of one version can also differ by their peer dependencies; \`pnpm why @prisma/orm-framework\` shows the difference, and giving every dependent the same peer leaves one copy. ${findCopies}`;
   }
   return `Install the same version of every @prisma/orm-* package, and a prisma CLI that runs that version. ${findCopies}`;
 }
