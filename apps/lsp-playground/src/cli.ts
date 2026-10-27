@@ -46,12 +46,8 @@ async function fileExists(path: string): Promise<boolean> {
 }
 
 function resolveCliEntry(): string {
-  // Nothing published carries a bin anymore (the unified `prisma` CLI is the
-  // only user-facing binary), so the playground spawns the workspace-local
-  // engine entry directly. The path is repo-relative rather than resolved
-  // through the `@internal/cli` package name so this app's manifest stays
-  // shaped like a consumer's (ADR 242, lint:consumer-internal-imports).
-  return resolve(PACKAGE_ROOT, '../../packages/1-framework/3-tooling/cli/dist/bin.mjs');
+  const manifest = createRequire(import.meta.url).resolve('@repo/prisma-cli/package.json');
+  return resolve(dirname(manifest), 'bin/prisma.mjs');
 }
 
 async function main(): Promise<void> {
