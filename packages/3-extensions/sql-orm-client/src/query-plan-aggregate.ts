@@ -71,6 +71,11 @@ function toAggregateProjection(
 function validateGroupedComparable(value: AnyExpression): AnyExpression {
   switch (value.kind) {
     case 'param-ref':
+      throw ormError(
+        'ORM.HAVING_EXPRESSION_UNSUPPORTED',
+        'ParamRef is not supported in grouped having expressions',
+        { meta: { kind: value.kind } },
+      );
     case 'prepared-param-ref':
     case 'literal':
     case 'column-ref':
@@ -87,6 +92,13 @@ function validateGroupedComparable(value: AnyExpression): AnyExpression {
         { meta: { kind: value.kind } },
       );
     case 'list':
+      if (value.values.some((entry) => entry.kind === 'param-ref')) {
+        throw ormError(
+          'ORM.HAVING_EXPRESSION_UNSUPPORTED',
+          'ParamRef is not supported in grouped having expressions',
+          { meta: { kind: 'list' } },
+        );
+      }
       return value;
     default:
       throw ormError(
