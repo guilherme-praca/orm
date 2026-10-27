@@ -14,9 +14,15 @@ interface FileUrlConverter {
   fileURLToPath(url: URL): string;
 }
 
+/** The names the framework's own package goes by: published, and in this repository's workspace. */
+const frameworkPackageNames: ReadonlySet<string> = new Set([
+  '@prisma/orm-framework',
+  '@internal/framework-components',
+]);
+
 const frameworkCopiesKey = Symbol.for('prisma.orm.frameworkCopies');
 
-function frameworkCopies(): Set<string> {
+function recordedModuleUrls(): Set<string> {
   const existing: unknown = Reflect.get(globalThis, frameworkCopiesKey);
   if (existing instanceof Set) {
     return existing;
@@ -26,19 +32,38 @@ function frameworkCopies(): Set<string> {
   return created;
 }
 
-frameworkCopies().add(import.meta.url);
+function parsedUrl(url: string): URL | undefined {
+  try {
+    return new URL(url);
+  } catch {
+    return undefined;
+  }
+}
 
-function withoutQueryOrHash(url: string): URL {
-  const location = new URL(url);
+function withoutQueryOrHash(url: string): string {
+  const location = parsedUrl(url);
+  if (location === undefined) {
+    return url;
+  }
   location.search = '';
   location.hash = '';
-  return location;
+  return location.href;
 }
 
-function displayedPath(location: URL): string {
-  const path = location.protocol === 'file:' ? nodeUrl()?.fileURLToPath(location) : undefined;
-  return (path ?? location.href).replace(/[/\\]$/, '');
+/**
+ * Records that the framework module at `moduleUrl` has loaded. Every module whose values another
+ * copy would not recognise calls this with its own `import.meta.url`; {@link assertOneFrameworkCopy}
+ * then counts the package folders those modules came from. A host that gives modules no URL
+ * records nothing.
+ */
+export function registerFrameworkCopy(moduleUrl: string | undefined): void {
+  if (typeof moduleUrl !== 'string') {
+    return;
+  }
+  recordedModuleUrls().add(withoutQueryOrHash(moduleUrl));
 }
+
+registerFrameworkCopy(import.meta.url);
 
 function nodeFs(): FileReader | undefined {
   return globalThis.process?.getBuiltinModule?.('node:fs');
@@ -48,25 +73,37 @@ function nodeUrl(): FileUrlConverter | undefined {
   return globalThis.process?.getBuiltinModule?.('node:url');
 }
 
-function packageVersionAt(fs: FileReader, folder: URL): string | undefined {
+function displayedPath(location: URL): string {
+  const path = location.protocol === 'file:' ? nodeUrl()?.fileURLToPath(location) : undefined;
+  return (path ?? location.href).replace(/[/\\]$/, '');
+}
+
+function frameworkVersionAt(fs: FileReader, folder: URL): string | undefined {
   try {
     const manifest: unknown = JSON.parse(fs.readFileSync(new URL('package.json', folder), 'utf-8'));
-    const version: unknown =
-      typeof manifest === 'object' && manifest !== null
-        ? Reflect.get(manifest, 'version')
-        : undefined;
-    return typeof version === 'string' ? version : undefined;
+    if (typeof manifest !== 'object' || manifest === null) return undefined;
+    const name: unknown = Reflect.get(manifest, 'name');
+    const version: unknown = Reflect.get(manifest, 'version');
+    return typeof name === 'string' &&
+      frameworkPackageNames.has(name) &&
+      typeof version === 'string'
+      ? version
+      : undefined;
   } catch {
     return undefined;
   }
 }
 
-function describeCopy(url: string): FrameworkCopy {
-  const moduleFolder = new URL('.', withoutQueryOrHash(url));
-  const fs = moduleFolder.protocol === 'file:' ? nodeFs() : undefined;
+/** The framework package folder `moduleUrl` belongs to; the module itself when no framework `package.json` encloses it. */
+function copyOf(moduleUrl: string): FrameworkCopy {
+  const location = parsedUrl(moduleUrl);
+  if (location === undefined) {
+    return { folder: moduleUrl };
+  }
+  const fs = location.protocol === 'file:' ? nodeFs() : undefined;
   if (fs !== undefined) {
-    for (let folder = moduleFolder; ; folder = new URL('..', folder)) {
-      const version = packageVersionAt(fs, folder);
+    for (let folder = new URL('.', location); ; folder = new URL('..', folder)) {
+      const version = frameworkVersionAt(fs, folder);
       if (version !== undefined) {
         return { folder: displayedPath(folder), version };
       }
@@ -75,35 +112,61 @@ function describeCopy(url: string): FrameworkCopy {
       }
     }
   }
-  return { folder: displayedPath(moduleFolder) };
+  return { folder: displayedPath(location) };
+}
+
+/** Every framework copy loaded so far, one per package folder. */
+function loadedFrameworkCopies(): readonly FrameworkCopy[] {
+  const byFolder = new Map<string, FrameworkCopy>();
+  for (const url of recordedModuleUrls()) {
+    const copy = copyOf(url);
+    if (!byFolder.has(copy.folder)) {
+      byFolder.set(copy.folder, copy);
+    }
+  }
+  return [...byFolder.values()];
+}
+
+function versionLabel(copy: FrameworkCopy): string {
+  return copy.version ?? 'unknown version';
 }
 
 function copyLine(copy: FrameworkCopy, versionWidth: number): string {
-  return `  ${(copy.version ?? '').padEnd(versionWidth)}  ${copy.folder}`;
+  return `  ${versionLabel(copy).padEnd(versionWidth)}  ${copy.folder}`;
 }
 
-/** Throws `RUNTIME.MULTIPLE_ORM_COPIES` when the framework has been loaded from more than one module URL. */
+const findCopies =
+  '`npm ls @prisma/orm-framework`, `pnpm why @prisma/orm-framework` or `bun why @prisma/orm-framework` shows which package brought each copy.';
+
+function fixFor(copies: readonly FrameworkCopy[]): string {
+  const versions = new Set(copies.map((copy) => copy.version));
+  const [onlyVersion] = versions;
+  if (versions.size === 1 && onlyVersion !== undefined) {
+    return `Every copy is ${onlyVersion}, so the package manager installed one version more than once. Reinstall so it keeps one copy, for example by deleting node_modules and the lockfile and installing again. ${findCopies}`;
+  }
+  return `Install the same version of every @prisma/orm-* package, and a prisma CLI that runs that version. ${findCopies}`;
+}
+
+/** Throws `RUNTIME.MULTIPLE_ORM_COPIES` when the framework has been loaded from more than one package folder. */
 export function assertOneFrameworkCopy(): void {
-  const urls = frameworkCopies();
-  if (urls.size <= 1) {
+  const copies = loadedFrameworkCopies();
+  if (copies.length <= 1) {
     return;
   }
-  const copies = [...urls].map(describeCopy);
-  const versionWidth = Math.max(...copies.map((copy) => copy.version?.length ?? 0));
+  const versionWidth = Math.max(...copies.map((copy) => versionLabel(copy).length));
   throw Object.assign(
     runtimeError(
       'RUNTIME.MULTIPLE_ORM_COPIES',
-      `Prisma ORM is loaded from ${copies.length} copies`,
-      {
-        copies,
-      },
+      `Prisma ORM is loaded from ${copies.length} copies (${copies.map(versionLabel).join(', ')})`,
+      { copies },
     ),
     {
       why: [
-        'Values and registries made by one copy are not recognised by another, so every @prisma/orm-* package and the prisma CLI must use one version.',
+        'Values and registries made by one copy are not recognised by another, so every @prisma/orm-* package and the prisma CLI must use one copy.',
         ...copies.map((copy) => copyLine(copy, versionWidth)),
       ].join('\n'),
-      fix: 'Install the same version of every @prisma/orm-* package, and a prisma CLI that runs that version. `npm ls @prisma/orm-framework`, `pnpm why @prisma/orm-framework` or `bun why @prisma/orm-framework` shows which package brought each copy.',
+      fix: fixFor(copies),
+      meta: { copies },
     },
   );
 }
