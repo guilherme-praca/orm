@@ -1323,7 +1323,9 @@ Statistics execution was requested for a Mongo command that does not expose affe
 
 ### RUNTIME.MULTIPLE_ORM_COPIES
 
-Prisma ORM is loaded from more than one copy. Payload: `copies`.
+Prisma ORM is loaded from more than one folder. Each folder holding `@prisma/orm-framework` is a separate copy, even at the same version, and values and registries made by one copy are not recognised by another. Every command and every client refuses to start, before it reads the contract or connects. The message lists each copy's version and folder.
+
+Two copies usually mean versions that differ: an `@prisma/orm-*` package, or an extension, at a different version from the application's database package, or a `prisma` CLI that runs a different ORM version. Install the same version of every `@prisma/orm-*` package and a `prisma` CLI that runs it. `npm ls @prisma/orm-framework`, `pnpm why @prisma/orm-framework` or `bun why @prisma/orm-framework` shows which package brought each copy. npm refuses a mismatched peer dependency, but pnpm and bun only warn, so a mismatch can install without an error. Payload: `copies`, a list of `{ folder, version }`; `version` is absent where it cannot be read.
 
 ### RUNTIME.MUTATION_DEFAULT_GENERATOR_MISSING
 
