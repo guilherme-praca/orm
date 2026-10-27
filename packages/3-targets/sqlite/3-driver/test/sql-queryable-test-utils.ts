@@ -5,9 +5,7 @@ import type {
 } from '@internal/sql-relational-core/ast';
 
 function request(sql: string, params?: readonly unknown[]): SqlExecuteRequest {
-  return params === undefined
-    ? { containsRawSql: false, sql }
-    : { containsRawSql: false, sql, params };
+  return params === undefined ? { sql } : { sql, params };
 }
 
 export async function executeSql(

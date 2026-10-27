@@ -19,7 +19,6 @@ function markerQuery(queryable: SqlQueryable): MarkerQuery {
     async query<Row = Record<string, unknown>>(sql: string, params?: readonly unknown[]) {
       const rows: Row[] = [];
       for await (const row of queryable.query<Row>({
-        containsRawSql: false,
         sql,
         ...(params ? { params } : {}),
       })) {

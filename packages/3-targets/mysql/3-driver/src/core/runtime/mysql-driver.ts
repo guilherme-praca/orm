@@ -175,7 +175,6 @@ abstract class MysqlQueryable implements SqlQueryable {
 
   async *query<Row = Record<string, unknown>>(request: SqlExecuteRequest): AsyncIterable<Row> {
     const lent = await this.lend();
-    if (request.containsRawSql) lent.runsRawSql();
     const outcome: StreamOutcome = { evict: false };
     try {
       yield* streamRows<Row>(lent.connection, request, {
@@ -189,7 +188,6 @@ abstract class MysqlQueryable implements SqlQueryable {
 
   async execute(request: SqlExecuteRequest): Promise<SqlStatementStats> {
     const lent = await this.lend();
-    if (request.containsRawSql) lent.runsRawSql();
     let evict = false;
     try {
       const result = await run(lent.connection, request);
@@ -298,11 +296,11 @@ class MysqlTransactionImpl extends MysqlQueryable implements SqlTransaction {
   }
 
   async commit(): Promise<void> {
-    await this.execute({ containsRawSql: false, sql: 'COMMIT' });
+    await this.execute({ sql: 'COMMIT' });
   }
 
   async rollback(): Promise<void> {
-    await this.execute({ containsRawSql: false, sql: 'ROLLBACK' });
+    await this.execute({ sql: 'ROLLBACK' });
   }
 }
 

@@ -117,7 +117,6 @@ class SqliteAdapterImpl implements Adapter<AnyQueryAst, SqliteContract, SqliteLo
             ) => {
               const rows: Row[] = [];
               for await (const row of queryable.query<Row>({
-                containsRawSql: false,
                 sql,
                 ...(params === undefined ? {} : { params }),
               })) {

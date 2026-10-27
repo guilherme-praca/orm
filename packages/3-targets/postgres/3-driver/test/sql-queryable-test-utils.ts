@@ -10,9 +10,7 @@ import pg from 'pg';
 import { createBoundDriverFromBinding, type PostgresBinding } from '../src/postgres-driver';
 
 function request(sql: string, params?: readonly unknown[]): SqlExecuteRequest {
-  return params === undefined
-    ? { containsRawSql: false, sql }
-    : { containsRawSql: false, sql, params };
+  return params === undefined ? { sql } : { sql, params };
 }
 
 export async function executeSql(

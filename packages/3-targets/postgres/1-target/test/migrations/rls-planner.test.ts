@@ -40,7 +40,7 @@ const stubLowerer: ExecuteRequestLowerer = {
   },
   renderColumnDefault: async () => '',
   async lowerToExecuteRequest(_ast, _ctx) {
-    return { containsRawSql: false, sql: 'CREATE TABLE stub', params: [] };
+    return { sql: 'CREATE TABLE stub', params: [] };
   },
 };
 
@@ -264,7 +264,7 @@ describe('RLS planner diff-wiring', () => {
       renderColumnDefault: async () => '',
       lowerToExecuteRequest: async (ast) => {
         received.push(ast);
-        return { containsRawSql: false, sql: 'stub', params: [] };
+        return { sql: 'stub', params: [] };
       },
     };
     const planner = createPostgresMigrationPlanner(recordingLowerer);

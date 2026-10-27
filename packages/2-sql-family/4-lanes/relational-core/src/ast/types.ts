@@ -239,10 +239,6 @@ function collectParamRefsWith<TNode extends Expression>(node: TNode): AnyParamRe
   });
 }
 
-function returningExprs(returning: ReadonlyArray<ProjectionItem> | undefined): AnyExpression[] {
-  return (returning ?? []).map((item) => item.expr);
-}
-
 function rewriteTableSource(table: TableSource, rewriter: AstRewriter): TableSource {
   return rewriter.tableSource ? rewriter.tableSource(table) : table;
 }
@@ -345,8 +341,6 @@ abstract class AstNode {
 
 abstract class QueryAst extends AstNode {
   abstract collectParamRefs(): AnyParamRef[];
-  /** Whether the statement holds raw SQL: a raw query, or a raw expression anywhere in its tree. */
-  abstract containsRawSql(): boolean;
   abstract toQueryAst(): AnyQueryAst;
 }
 
@@ -366,16 +360,6 @@ abstract class Expression extends AstNode implements ExpressionSource {
 
   collectParamRefs(): AnyParamRef[] {
     return collectParamRefsWith(this);
-  }
-
-  containsRawSql(): boolean {
-    return this.fold<boolean>({
-      empty: false,
-      combine: (a, b) => a || b,
-      isAbsorbing: (value) => value,
-      rawExpr: () => true,
-      select: (ast) => ast.containsRawSql(),
-    });
   }
 
   baseColumnRef(): ColumnRef {
@@ -1853,56 +1837,119 @@ export class SelectAst extends QueryAst {
   }
 
   collectColumnRefs(): ColumnRef[] {
-    return this.#children().flatMap((child) => child.collectColumnRefs());
-  }
-
-  collectParamRefs(): AnyParamRef[] {
-    return this.#children().flatMap((child) => child.collectParamRefs());
-  }
-
-  override containsRawSql(): boolean {
-    return this.#children().some((child) => child.containsRawSql());
-  }
-
-  #children(): Array<AnyExpression | SelectAst> {
-    const children: Array<AnyExpression | SelectAst> = [];
-    const pushSource = (source: AnyFromSource | undefined) => {
-      if (source?.kind === 'derived-table-source') {
-        children.push(source.query);
-      } else if (source?.kind === 'function-source') {
-        children.push(...source.args);
-      }
+    const refs: ColumnRef[] = [];
+    const pushRefs = (columns: ReadonlyArray<ColumnRef>) => {
+      refs.push(...columns);
     };
 
-    pushSource(this.from);
-    for (const projection of this.projection) {
-      children.push(projection.expr);
+    if (this.from?.kind === 'derived-table-source') {
+      pushRefs(this.from.query.collectColumnRefs());
+    } else if (this.from?.kind === 'function-source') {
+      for (const arg of this.from.args) {
+        pushRefs(arg.collectColumnRefs());
+      }
     }
+
+    for (const projection of this.projection) {
+      if (!(projection.expr.kind === 'literal')) {
+        pushRefs(projection.expr.collectColumnRefs());
+      }
+    }
+
     if (this.where) {
-      children.push(this.where);
+      pushRefs(this.where.collectColumnRefs());
     }
     if (this.having) {
-      children.push(this.having);
+      pushRefs(this.having.collectColumnRefs());
     }
     for (const orderItem of this.orderBy ?? []) {
-      children.push(orderItem.expr);
+      pushRefs(orderItem.expr.collectColumnRefs());
     }
-    children.push(...(this.distinctOn ?? []), ...(this.groupBy ?? []));
+    for (const expr of this.distinctOn ?? []) {
+      pushRefs(expr.collectColumnRefs());
+    }
+    for (const expr of this.groupBy ?? []) {
+      pushRefs(expr.collectColumnRefs());
+    }
     for (const join of this.joins ?? []) {
-      pushSource(join.source);
+      if (join.source.kind === 'derived-table-source') {
+        pushRefs(join.source.query.collectColumnRefs());
+      } else if (join.source.kind === 'function-source') {
+        for (const arg of join.source.args) {
+          pushRefs(arg.collectColumnRefs());
+        }
+      }
       if (join.on.kind === 'eq-col-join-on') {
-        children.push(join.on.left, join.on.right);
+        refs.push(join.on.left, join.on.right);
       } else {
-        children.push(join.on);
+        pushRefs(join.on.collectColumnRefs());
       }
     }
     if (typeof this.limit === 'object') {
-      children.push(this.limit);
+      pushRefs(this.limit.collectColumnRefs());
     }
     if (typeof this.offset === 'object') {
-      children.push(this.offset);
+      pushRefs(this.offset.collectColumnRefs());
     }
-    return children;
+
+    return refs;
+  }
+
+  collectParamRefs(): AnyParamRef[] {
+    const refs: AnyParamRef[] = [];
+    const pushRefs = (params: ReadonlyArray<AnyParamRef>) => {
+      refs.push(...params);
+    };
+
+    if (this.from?.kind === 'derived-table-source') {
+      pushRefs(this.from.query.collectParamRefs());
+    } else if (this.from?.kind === 'function-source') {
+      for (const arg of this.from.args) {
+        pushRefs(arg.collectParamRefs());
+      }
+    }
+
+    for (const projection of this.projection) {
+      if (!(projection.expr.kind === 'literal')) {
+        pushRefs(projection.expr.collectParamRefs());
+      }
+    }
+
+    if (this.where) {
+      pushRefs(this.where.collectParamRefs());
+    }
+    if (this.having) {
+      pushRefs(this.having.collectParamRefs());
+    }
+    for (const orderItem of this.orderBy ?? []) {
+      pushRefs(orderItem.expr.collectParamRefs());
+    }
+    for (const expr of this.distinctOn ?? []) {
+      pushRefs(expr.collectParamRefs());
+    }
+    for (const expr of this.groupBy ?? []) {
+      pushRefs(expr.collectParamRefs());
+    }
+    for (const join of this.joins ?? []) {
+      if (join.source.kind === 'derived-table-source') {
+        pushRefs(join.source.query.collectParamRefs());
+      } else if (join.source.kind === 'function-source') {
+        for (const arg of join.source.args) {
+          pushRefs(arg.collectParamRefs());
+        }
+      }
+      if (!(join.on.kind === 'eq-col-join-on')) {
+        pushRefs(join.on.collectParamRefs());
+      }
+    }
+    if (typeof this.limit === 'object') {
+      pushRefs(this.limit.collectParamRefs());
+    }
+    if (typeof this.offset === 'object') {
+      pushRefs(this.offset.collectParamRefs());
+    }
+
+    return refs;
   }
 
   override toQueryAst(): AnyQueryAst {
@@ -2038,22 +2085,27 @@ export class InsertAst extends QueryAst {
   }
 
   override collectParamRefs(): AnyParamRef[] {
-    return this.#children().flatMap((child) => child.collectParamRefs());
-  }
-
-  override containsRawSql(): boolean {
-    return this.#children().some((child) => child.containsRawSql());
-  }
-
-  #children(): AnyExpression[] {
-    const rowValues = this.rows
-      .flatMap((row) => Object.values(row))
-      .filter((value) => value.kind !== 'default-value');
-    const conflictSet =
-      this.onConflict?.action.kind === 'do-update-set'
-        ? Object.values(this.onConflict.action.set)
-        : [];
-    return [...rowValues, ...conflictSet, ...returningExprs(this.returning)];
+    const refs: AnyParamRef[] = [];
+    for (const row of this.rows) {
+      for (const value of Object.values(row)) {
+        if (value.kind === 'param-ref' || value.kind === 'prepared-param-ref') {
+          refs.push(value);
+        } else if (value.kind === 'raw-expr') {
+          refs.push(...value.collectParamRefs());
+        }
+      }
+    }
+    if (this.onConflict?.action.kind === 'do-update-set') {
+      for (const value of Object.values(this.onConflict.action.set)) {
+        refs.push(...value.collectParamRefs());
+      }
+    }
+    for (const item of this.returning ?? []) {
+      if (item.expr.kind !== 'literal') {
+        refs.push(...item.expr.collectParamRefs());
+      }
+    }
+    return refs;
   }
 
   override toQueryAst(): AnyQueryAst {
@@ -2108,19 +2160,19 @@ export class UpdateAst extends QueryAst {
   }
 
   override collectParamRefs(): AnyParamRef[] {
-    return this.#children().flatMap((child) => child.collectParamRefs());
-  }
-
-  override containsRawSql(): boolean {
-    return this.#children().some((child) => child.containsRawSql());
-  }
-
-  #children(): AnyExpression[] {
-    return [
-      ...Object.values(this.set),
-      ...(this.where ? [this.where] : []),
-      ...returningExprs(this.returning),
-    ];
+    const refs: AnyParamRef[] = [];
+    for (const value of Object.values(this.set)) {
+      refs.push(...value.collectParamRefs());
+    }
+    if (this.where) {
+      refs.push(...this.where.collectParamRefs());
+    }
+    for (const item of this.returning ?? []) {
+      if (item.expr.kind !== 'literal') {
+        refs.push(...item.expr.collectParamRefs());
+      }
+    }
+    return refs;
   }
 
   override toQueryAst(): AnyQueryAst {
@@ -2167,15 +2219,16 @@ export class DeleteAst extends QueryAst {
   }
 
   override collectParamRefs(): AnyParamRef[] {
-    return this.#children().flatMap((child) => child.collectParamRefs());
-  }
-
-  override containsRawSql(): boolean {
-    return this.#children().some((child) => child.containsRawSql());
-  }
-
-  #children(): AnyExpression[] {
-    return [...(this.where ? [this.where] : []), ...returningExprs(this.returning)];
+    const refs: AnyParamRef[] = [];
+    if (this.where) {
+      refs.push(...this.where.collectParamRefs());
+    }
+    for (const item of this.returning ?? []) {
+      if (item.expr.kind !== 'literal') {
+        refs.push(...item.expr.collectParamRefs());
+      }
+    }
+    return refs;
   }
 
   override toQueryAst(): AnyQueryAst {
@@ -2284,10 +2337,6 @@ export class RawQueryAst extends QueryAst {
       }
     }
     return refs;
-  }
-
-  override containsRawSql(): boolean {
-    return true;
   }
 
   override toQueryAst(): AnyQueryAst {

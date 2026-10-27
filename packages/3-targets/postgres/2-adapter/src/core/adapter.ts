@@ -63,7 +63,6 @@ class PostgresAdapterImpl
             ) => {
               const rows: Row[] = [];
               for await (const row of queryable.query<Row>({
-                containsRawSql: false,
                 sql,
                 ...(params === undefined ? {} : { params }),
               })) {

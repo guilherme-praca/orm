@@ -30,7 +30,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'CREATE POLICY "p_read_ab12cd34" ON "public"."profiles" AS PERMISSIVE FOR SELECT TO app_user USING ((auth.uid() = user_id))',
       params: [],
     });
@@ -49,7 +48,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'CREATE POLICY "p_ins_ab12cd34" ON "public"."profiles" AS PERMISSIVE FOR INSERT TO app_user WITH CHECK ((owner_id = current_setting(\'app.uid\')::int))',
       params: [],
     });
@@ -70,7 +68,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'CREATE POLICY "p_upd_ab12cd34" ON "public"."profiles" AS PERMISSIVE FOR UPDATE TO app_user USING ((owner_id = 1)) WITH CHECK ((owner_id = 2))',
       params: [],
     });
@@ -89,7 +86,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'CREATE POLICY "p_del_ab12cd34" ON "public"."profiles" AS PERMISSIVE FOR DELETE TO app_user USING ((owner_id = 1))',
       params: [],
     });
@@ -109,7 +105,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'CREATE POLICY "p_all_ab12cd34" ON "public"."profiles" AS PERMISSIVE FOR ALL TO app_user USING ((owner_id = 1)) WITH CHECK ((owner_id = 2))',
       params: [],
     });
@@ -128,7 +123,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'CREATE POLICY "p_ins_restrict_ab12cd34" ON "public"."profiles" AS RESTRICTIVE FOR INSERT TO app_user, admin WITH CHECK ((owner_id = 1))',
       params: [],
     });
@@ -142,7 +136,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'DROP POLICY "p_read_ab12cd34" ON "public"."profiles"',
       params: [],
     });
@@ -152,7 +145,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     const ast = new PostgresDisableRowLevelSecurity({ schema: 'public', table: 'profiles' });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'ALTER TABLE "public"."profiles" DISABLE ROW LEVEL SECURITY',
       params: [],
     });
@@ -167,7 +159,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — RLS DDL', () => {
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: 'ALTER POLICY "read_own_profiles_ab12cd34" ON "public"."profiles" RENAME TO "owner_read_profiles_ab12cd34"',
       params: [],
     });

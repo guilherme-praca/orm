@@ -65,7 +65,6 @@ describe('@internal/driver-postgres prepared statements', () => {
 
       const r1 = await consume(
         driver.query<{ id: string; label: string }>({
-          containsRawSql: false,
           sql: 'select id, label from t where label = $1',
           params: ['a'],
           preparedStatementHandle: slot,
@@ -79,7 +78,6 @@ describe('@internal/driver-postgres prepared statements', () => {
 
       const r2 = await consume(
         driver.query<{ id: string; label: string }>({
-          containsRawSql: false,
           sql: 'select id, label from t where label = $1',
           params: ['b'],
           preparedStatementHandle: slot,
@@ -125,9 +123,7 @@ describe('@internal/driver-postgres prepared statements', () => {
         await databaseA.close();
       });
 
-      await consume(
-        driverA.query({ containsRawSql: false, sql, params: ['a'], preparedStatementHandle: slot }),
-      );
+      await consume(driverA.query({ sql, params: ['a'], preparedStatementHandle: slot }));
       const name = snapshot() as string;
       expect(name).toMatch(/^pn_\d+$/);
       expect(await preparedNames(driverA)).toEqual([name]);
@@ -142,9 +138,7 @@ describe('@internal/driver-postgres prepared statements', () => {
         await databaseB.close();
       });
 
-      await consume(
-        driverB.query({ containsRawSql: false, sql, params: ['a'], preparedStatementHandle: slot }),
-      );
+      await consume(driverB.query({ sql, params: ['a'], preparedStatementHandle: slot }));
       expect(snapshot()).toBe(name);
       expect(await preparedNames(driverB)).toEqual([name]);
     },
@@ -172,9 +166,7 @@ describe('@internal/driver-postgres prepared statements', () => {
       const { slot, snapshot } = makeSlot();
       const sql = 'select id, label from t3 where label = $1';
 
-      const r1 = await consume(
-        driver.query({ containsRawSql: false, sql, params: ['a'], preparedStatementHandle: slot }),
-      );
+      const r1 = await consume(driver.query({ sql, params: ['a'], preparedStatementHandle: slot }));
       expect(r1).toHaveLength(1);
       const firstHandle = snapshot() as string;
 
@@ -183,9 +175,7 @@ describe('@internal/driver-postgres prepared statements', () => {
       // would skip Parse on the wire and surface 26000 from the server.
       await executeSql(driver, 'deallocate all');
 
-      const r2 = await consume(
-        driver.query({ containsRawSql: false, sql, params: ['b'], preparedStatementHandle: slot }),
-      );
+      const r2 = await consume(driver.query({ sql, params: ['b'], preparedStatementHandle: slot }));
       expect(r2).toHaveLength(1);
       expect((r2[0] as { label: string }).label).toBe('b');
 
@@ -219,9 +209,7 @@ describe('@internal/driver-postgres prepared statements', () => {
       // SELECT * so a column-shape change invalidates the cached plan.
       const sql = 'select * from t4 where id = $1';
 
-      const r1 = await consume(
-        driver.query({ containsRawSql: false, sql, params: [1], preparedStatementHandle: slot }),
-      );
+      const r1 = await consume(driver.query({ sql, params: [1], preparedStatementHandle: slot }));
       expect(r1).toHaveLength(1);
       const firstHandle = snapshot() as string;
 
@@ -229,9 +217,7 @@ describe('@internal/driver-postgres prepared statements', () => {
       await executeSql(driver, 'alter table t4 add column label varchar(50)');
       await executeSql(driver, "update t4 set label = 'b' where id = 2");
 
-      const r2 = await consume(
-        driver.query({ containsRawSql: false, sql, params: [2], preparedStatementHandle: slot }),
-      );
+      const r2 = await consume(driver.query({ sql, params: [2], preparedStatementHandle: slot }));
       expect(r2).toHaveLength(1);
       const retryHandle = snapshot() as string;
       expect(retryHandle).toMatch(/^pn_\d+$/);
@@ -265,17 +251,13 @@ describe('@internal/driver-postgres prepared statements', () => {
       const { slot, snapshot } = makeSlot();
       const sql = 'select id, label from t5 where label = $1';
 
-      const r1 = await consume(
-        tx.query({ containsRawSql: false, sql, params: ['a'], preparedStatementHandle: slot }),
-      );
+      const r1 = await consume(tx.query({ sql, params: ['a'], preparedStatementHandle: slot }));
       expect(r1).toEqual([{ id: '1', label: 'a' }]);
 
       const handle = snapshot() as string;
       expect(handle).toMatch(/^pn_\d+$/);
 
-      const r2 = await consume(
-        tx.query({ containsRawSql: false, sql, params: ['b'], preparedStatementHandle: slot }),
-      );
+      const r2 = await consume(tx.query({ sql, params: ['b'], preparedStatementHandle: slot }));
       expect(r2).toEqual([{ id: '2', label: 'b' }]);
       expect(snapshot()).toBe(handle);
 
@@ -284,12 +266,7 @@ describe('@internal/driver-postgres prepared statements', () => {
       // PREPARE survives the transaction; only DEALLOCATE / end-of-session
       // discards it. The handle still resolves on the parent connection.
       const r3 = await consume(
-        connection.query({
-          containsRawSql: false,
-          sql,
-          params: ['c'],
-          preparedStatementHandle: slot,
-        }),
+        connection.query({ sql, params: ['c'], preparedStatementHandle: slot }),
       );
       expect(r3).toEqual([{ id: '3', label: 'c' }]);
       expect(snapshot()).toBe(handle);
@@ -320,16 +297,12 @@ describe('@internal/driver-postgres prepared statements', () => {
       const { slot, snapshot } = makeSlot();
       const sql = 'select id, label from t7 where label = $1';
 
-      const r1 = await consume(
-        driver.query({ containsRawSql: false, sql, params: ['a'], preparedStatementHandle: slot }),
-      );
+      const r1 = await consume(driver.query({ sql, params: ['a'], preparedStatementHandle: slot }));
       expect(r1).toEqual([{ id: '1', label: 'a' }]);
       const handle = snapshot() as string;
       expect(handle).toMatch(/^pn_\d+$/);
 
-      const r2 = await consume(
-        driver.query({ containsRawSql: false, sql, params: ['b'], preparedStatementHandle: slot }),
-      );
+      const r2 = await consume(driver.query({ sql, params: ['b'], preparedStatementHandle: slot }));
       expect(r2).toEqual([{ id: '2', label: 'b' }]);
 
       expect(await preparedNames(driver)).toEqual([handle]);
@@ -361,12 +334,8 @@ describe('@internal/driver-postgres prepared statements', () => {
       const { slot, snapshot } = makeSlot();
       const sql = 'select id, label from t6 where label = $1';
 
-      await consume(
-        driver.query({ containsRawSql: false, sql, params: ['a'], preparedStatementHandle: slot }),
-      );
-      await consume(
-        driver.query({ containsRawSql: false, sql, params: ['b'], preparedStatementHandle: slot }),
-      );
+      await consume(driver.query({ sql, params: ['a'], preparedStatementHandle: slot }));
+      await consume(driver.query({ sql, params: ['b'], preparedStatementHandle: slot }));
 
       expect(snapshot()).toBeUndefined();
       expect(await preparedNames(driver)).toEqual([]);

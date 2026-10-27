@@ -20,7 +20,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — CREATE/DROP TYPE DDL'
     });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: `CREATE TYPE "sales"."order status" AS ENUM ('draft', 'it''s reviewed', 'done')`,
       params: [],
     });
@@ -30,7 +29,6 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — CREATE/DROP TYPE DDL'
     const ast = new PostgresCreateType({ name: 'mood', values: ['happy'] });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
     expect(result).toEqual({
-      containsRawSql: false,
       sql: `CREATE TYPE "mood" AS ENUM ('happy')`,
       params: [],
     });
@@ -39,16 +37,12 @@ describe('PostgresControlAdapter.lowerToExecuteRequest — CREATE/DROP TYPE DDL'
   it('renders DROP TYPE schema-qualified and quoted', async () => {
     const ast = new PostgresDropType({ schema: 'sales', name: 'order_status' });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
-    expect(result).toEqual({
-      containsRawSql: false,
-      sql: `DROP TYPE "sales"."order_status"`,
-      params: [],
-    });
+    expect(result).toEqual({ sql: `DROP TYPE "sales"."order_status"`, params: [] });
   });
 
   it('renders DROP TYPE unqualified when no schema', async () => {
     const ast = new PostgresDropType({ name: 'mood' });
     const result = await adapter.lowerToExecuteRequest(ast, ctx);
-    expect(result).toEqual({ containsRawSql: false, sql: `DROP TYPE "mood"`, params: [] });
+    expect(result).toEqual({ sql: `DROP TYPE "mood"`, params: [] });
   });
 });

@@ -411,16 +411,11 @@ export abstract class SqlRuntimeBase<TContract extends Contract<SqlStorage> = Co
     return this.driver.query<Record<string, unknown>>({
       sql: exec.sql,
       params: exec.params,
-      containsRawSql: exec.ast.containsRawSql(),
     });
   }
 
   protected override runExecute(exec: SqlExecutionPlan): Promise<SqlStatementStats> {
-    return this.driver.execute({
-      sql: exec.sql,
-      params: exec.params,
-      containsRawSql: exec.ast.containsRawSql(),
-    });
+    return this.driver.execute({ sql: exec.sql, params: exec.params });
   }
 
   /**
@@ -1012,11 +1007,7 @@ export abstract class SqlRuntimeBase<TContract extends Contract<SqlStorage> = Co
               exec,
               () => buildDecodeContext(exec.ast, self.contractCodecs),
               () =>
-                queryable.query<Record<string, unknown>>({
-                  sql: exec.sql,
-                  params: exec.params,
-                  containsRawSql: exec.ast.containsRawSql(),
-                }),
+                queryable.query<Record<string, unknown>>({ sql: exec.sql, params: exec.params }),
               codecCtx,
               queryable,
               endOperation,
@@ -1056,11 +1047,7 @@ export abstract class SqlRuntimeBase<TContract extends Contract<SqlStorage> = Co
     return this.executeOn(queryable, options, plan, contextFields, async (run) => {
       const exec = await this.prepareOperation(plan, codecCtx, run);
       return this.executeEncodedPlan(run, exec, queryable, codecCtx, () =>
-        queryable.execute({
-          sql: exec.sql,
-          params: exec.params,
-          containsRawSql: exec.ast.containsRawSql(),
-        }),
+        queryable.execute({ sql: exec.sql, params: exec.params }),
       );
     });
   }
@@ -1142,7 +1129,6 @@ export abstract class SqlRuntimeBase<TContract extends Contract<SqlStorage> = Co
       sql: lowered.sql,
       ast: finalPlan.ast,
       meta: finalPlan.meta,
-      containsRawSql: finalPlan.ast.containsRawSql(),
       slots: lowered.params,
       decodeContext,
       paramMetadata,
@@ -1237,7 +1223,6 @@ export abstract class SqlRuntimeBase<TContract extends Contract<SqlStorage> = Co
     const request: PreparedExecuteRequest = {
       sql: exec.sql,
       params: exec.params,
-      containsRawSql: ps.containsRawSql,
       preparedStatementHandle: {
         get: () => handles.get(ps),
         set: (value) => {
@@ -1324,7 +1309,6 @@ export abstract class SqlRuntimeBase<TContract extends Contract<SqlStorage> = Co
     const request: PreparedExecuteRequest = {
       sql: exec.sql,
       params: exec.params,
-      containsRawSql: ps.containsRawSql,
       preparedStatementHandle: {
         get: () => handles.get(ps),
         set: (value) => {

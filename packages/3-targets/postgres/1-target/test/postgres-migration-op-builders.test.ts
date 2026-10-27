@@ -491,7 +491,7 @@ function countingLowerer(): ExecuteRequestLowerer {
     renderColumnDefault: async () => '',
     lowerToExecuteRequest: async () => {
       counter += 1;
-      return { containsRawSql: false, sql: `LOWERED ${counter}`, params: [`p${counter}`] };
+      return { sql: `LOWERED ${counter}`, params: [`p${counter}`] };
     },
   };
 }
@@ -732,11 +732,7 @@ function astRecordingControlStack(): ControlStack<'sql', 'postgres'> {
   const lowerer: ExecuteRequestLowerer = {
     lower: () => ({ sql: 'UNUSED', params: [] }),
     renderColumnDefault: async (column) => JSON.stringify(column.default),
-    lowerToExecuteRequest: async (ast) => ({
-      containsRawSql: false,
-      sql: JSON.stringify(ast),
-      params: [],
-    }),
+    lowerToExecuteRequest: async (ast) => ({ sql: JSON.stringify(ast), params: [] }),
   };
   const adapter = lowerer as unknown as SqlControlAdapter<'postgres'>;
   return {

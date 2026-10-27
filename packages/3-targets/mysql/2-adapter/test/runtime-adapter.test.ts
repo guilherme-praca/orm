@@ -104,7 +104,6 @@ describe('the MySQL runtime adapter', () => {
         },
       },
       read: {
-        containsRawSql: false,
         sql: 'SELECT space, core_hash, profile_hash, contract_json, canonical_version, updated_at, app_tag, meta, invariants FROM `_prisma_marker` WHERE space = ?',
         params: ['app'],
       },

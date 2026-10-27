@@ -60,7 +60,6 @@ describe('@internal/driver-postgres', () => {
 
       const rows: Array<{ id: number; name: string }> = [];
       for await (const row of driver.query<{ id: number; name: string }>({
-        containsRawSql: false,
         sql: 'select id, name from items order by id asc',
       })) {
         rows.push(row);
@@ -83,7 +82,6 @@ describe('@internal/driver-postgres', () => {
 
       const rows: Array<{ id: number; name: string }> = [];
       for await (const row of driver.query<{ id: number; name: string }>({
-        containsRawSql: false,
         sql: 'select id, name from items order by id asc',
       })) {
         rows.push(row);
@@ -112,7 +110,6 @@ describe('@internal/driver-postgres', () => {
 
       const rows: Array<{ id: number; name: string }> = [];
       for await (const row of driver.query<{ id: number; name: string }>({
-        containsRawSql: false,
         sql: 'select id, name from items order by id asc',
       })) {
         rows.push(row);
@@ -152,7 +149,6 @@ describe('@internal/driver-postgres', () => {
 
       const rows: Array<{ id: number; name: string }> = [];
       for await (const row of driver.query<{ id: number; name: string }>({
-        containsRawSql: false,
         sql: 'select id, name from items',
       })) {
         rows.push(row);
@@ -188,7 +184,6 @@ describe('@internal/driver-postgres', () => {
 
       const rows: Array<{ id: string; name: string }> = [];
       for await (const row of driver.query<{ id: string; name: string }>({
-        containsRawSql: false,
         sql: 'select id, name from cursor_items order by id asc',
       })) {
         rows.push(row);
@@ -221,7 +216,6 @@ describe('@internal/driver-postgres', () => {
       await executeSql(driver, 'insert into explain_items(name) values ($1)', ['test']);
 
       const result = await driver.explain!({
-        containsRawSql: false,
         sql: 'select id, name from explain_items where id = $1',
         params: [1],
       });
@@ -346,7 +340,6 @@ describe('@internal/driver-postgres', () => {
 
         const rows: Array<{ id: number; name: string }> = [];
         for await (const row of connection.query<{ id: number; name: string }>({
-          containsRawSql: false,
           sql: 'select id, name from items order by id asc',
         })) {
           rows.push(row);
@@ -492,7 +485,6 @@ describe('@internal/driver-postgres', () => {
 
         const rows: Array<{ id: string; name: string }> = [];
         for await (const row of transaction.query<{ id: string; name: string }>({
-          containsRawSql: false,
           sql: 'select id, name from tx_stream_items where name like $1 order by id asc',
           params: ['tx-%'],
         })) {
@@ -535,7 +527,6 @@ describe('@internal/driver-postgres', () => {
         const transaction = await connection.beginTransaction();
 
         const result = await transaction.explain?.({
-          containsRawSql: false,
           sql: 'select id, name from tx_explain_items',
         });
 

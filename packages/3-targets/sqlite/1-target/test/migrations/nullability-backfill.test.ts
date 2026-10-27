@@ -14,7 +14,7 @@ import { introspectedColumn, sqliteTestComponents } from '../sqlite-test-types';
 const stubLowerer: ExecuteRequestLowerer = {
   lower: () => ({ sql: '', params: [] }),
   renderColumnDefault: async () => '',
-  lowerToExecuteRequest: async () => ({ containsRawSql: false, sql: '', params: [] }),
+  lowerToExecuteRequest: async () => ({ sql: '', params: [] }),
 };
 
 function makeColumn(overrides: Partial<StorageColumn> = {}): StorageColumn {

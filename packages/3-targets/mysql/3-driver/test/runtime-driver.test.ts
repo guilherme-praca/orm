@@ -67,7 +67,7 @@ describe('MySQL runtime driver with a fatal stream error', () => {
   it('destroys the connection instead of returning it to the pool', async () => {
     const driver = mysqlRuntimeDriver.create();
     await driver.connect({ kind: 'url', url: 'mysql://root@localhost/db' });
-    const rows = driver.query({ containsRawSql: false, sql: 'SELECT 1' })[Symbol.asyncIterator]();
+    const rows = driver.query({ sql: 'SELECT 1' })[Symbol.asyncIterator]();
     await expect(rows.next()).rejects.toMatchObject({ sqlState: '08S01' });
     expect({
       destroyed: connection.destroy.mock.calls.length,
@@ -88,9 +88,7 @@ describe('MySQL runtime driver at the server limit on prepared statements', () =
     try {
       const driver = mysqlRuntimeDriver.create();
       await driver.connect({ kind: 'url', url: 'mysql://root@localhost/db' });
-      await expect(
-        driver.execute({ containsRawSql: false, sql: 'SELECT 1' }),
-      ).rejects.toMatchObject({
+      await expect(driver.execute({ sql: 'SELECT 1' })).rejects.toMatchObject({
         code: 'DRIVER.PREPARE_FAILED',
         fix: expect.stringContaining('statementCacheSize'),
       });
@@ -111,7 +109,7 @@ describe('MySQL runtime driver and raw SQL', () => {
   async function connected() {
     const driver = mysqlRuntimeDriver.create();
     await driver.connect({ kind: 'url', url: 'mysql://root@localhost/db' });
-    await driver.execute({ containsRawSql: false, sql: 'SELECT 0' });
+    await driver.execute({ sql: 'SELECT 0' });
     const setups = () => connection.constantSql.filter((sql) => sql === SESSION_SETUP[0]).length;
     const start = {
       setups: setups(),
@@ -130,16 +128,16 @@ describe('MySQL runtime driver and raw SQL', () => {
 
   it('returns a pooled connection to the pool after a statement without raw SQL', async () => {
     const { driver, since } = await connected();
-    await driver.execute({ containsRawSql: false, sql: 'SELECT 1' });
-    for await (const _row of driver.query({ containsRawSql: false, sql: 'SELECT 2' })) {
+    await driver.execute({ sql: 'SELECT 1' });
+    for await (const _row of driver.query({ sql: 'SELECT 2' })) {
     }
     expect(since()).toEqual({ setups: 0, released: 2, destroyed: 0, closed: 0 });
   });
 
   it('closes a pooled connection that ran raw SQL instead of returning it to the pool', async () => {
     const { driver, since } = await connected();
-    await driver.execute({ containsRawSql: true, sql: "SET time_zone = '+05:00'" });
-    for await (const _row of driver.query({ containsRawSql: true, sql: 'SET autocommit = 0' })) {
+    await driver.execute({ sql: "SET time_zone = '+05:00'" });
+    for await (const _row of driver.query({ sql: 'SET autocommit = 0' })) {
     }
     expect(since()).toEqual({ setups: 0, released: 0, destroyed: 0, closed: 2 });
   });
@@ -147,10 +145,10 @@ describe('MySQL runtime driver and raw SQL', () => {
   it('restores the session before a holder runs its next statement after raw SQL, and closes the connection on release', async () => {
     const { driver, since } = await connected();
     const held = await driver.acquireConnection();
-    await held.execute({ containsRawSql: true, sql: "SET time_zone = '+05:00'" });
+    await held.execute({ sql: "SET time_zone = '+05:00'" });
     const beforeNext = since();
-    await held.execute({ containsRawSql: false, sql: 'SELECT 1' });
-    await held.execute({ containsRawSql: false, sql: 'SELECT 2' });
+    await held.execute({ sql: 'SELECT 1' });
+    await held.execute({ sql: 'SELECT 2' });
     const afterNext = since();
     await held.release();
     expect({ beforeNext, afterNext, released: since() }).toEqual({
@@ -163,9 +161,9 @@ describe('MySQL runtime driver and raw SQL', () => {
   it('returns a held connection to the pool when nothing on it ran raw SQL', async () => {
     const { driver, since } = await connected();
     const held = await driver.acquireConnection();
-    await held.execute({ containsRawSql: false, sql: 'SELECT 1' });
+    await held.execute({ sql: 'SELECT 1' });
     const transaction = await held.beginTransaction();
-    await transaction.execute({ containsRawSql: false, sql: 'SELECT 2' });
+    await transaction.execute({ sql: 'SELECT 2' });
     await transaction.commit();
     await held.release();
     expect(since()).toEqual({ setups: 0, released: 1, destroyed: 0, closed: 0 });
@@ -175,8 +173,8 @@ describe('MySQL runtime driver and raw SQL', () => {
     const { driver, since } = await connected();
     const held = await driver.acquireConnection();
     const transaction = await held.beginTransaction();
-    await transaction.execute({ containsRawSql: true, sql: 'SET foreign_key_checks = 0' });
-    await transaction.execute({ containsRawSql: false, sql: 'SELECT 1' });
+    await transaction.execute({ sql: 'SET foreign_key_checks = 0' });
+    await transaction.execute({ sql: 'SELECT 1' });
     await transaction.commit();
     await held.release();
     expect(since()).toEqual({ setups: 1, released: 0, destroyed: 0, closed: 1 });
@@ -186,9 +184,9 @@ describe('MySQL runtime driver and raw SQL', () => {
     const first = await connected();
     const second = await connected();
     const held = await first.driver.acquireConnection();
-    await held.execute({ containsRawSql: true, sql: "SET time_zone = '+05:00'" });
+    await held.execute({ sql: "SET time_zone = '+05:00'" });
     const otherHeld = await second.driver.acquireConnection();
-    await otherHeld.execute({ containsRawSql: false, sql: 'SELECT 1' });
+    await otherHeld.execute({ sql: 'SELECT 1' });
     await otherHeld.release();
     expect(second.since()).toEqual({ setups: 0, released: 1, destroyed: 0, closed: 0 });
   });

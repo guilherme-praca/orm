@@ -94,12 +94,8 @@ describe('postgres prepared statements', () => {
 
       const { slot, snapshot } = makeSlot();
       const sql = 'select id from t where x = $1';
-      await consume(
-        driver.query({ containsRawSql: false, sql, params: [42], preparedStatementHandle: slot }),
-      );
-      await consume(
-        driver.query({ containsRawSql: false, sql, params: [99], preparedStatementHandle: slot }),
-      );
+      await consume(driver.query({ sql, params: [42], preparedStatementHandle: slot }));
+      await consume(driver.query({ sql, params: [99], preparedStatementHandle: slot }));
 
       expect(snapshot()).toBeUndefined();
       expect(calls).toHaveLength(2);
@@ -123,14 +119,7 @@ describe('postgres prepared statements', () => {
 
       const { slot } = makeSlot();
       await expect(
-        consume(
-          driver.query({
-            containsRawSql: false,
-            sql: 'select 1',
-            params: [],
-            preparedStatementHandle: slot,
-          }),
-        ),
+        consume(driver.query({ sql: 'select 1', params: [], preparedStatementHandle: slot })),
       ).rejects.toBeInstanceOf(SqlQueryError);
       expect(invocations).toBe(1);
     });
@@ -147,9 +136,7 @@ describe('postgres prepared statements', () => {
     });
     cleanups.push(() => driver.close());
 
-    await expect(
-      driver.execute({ containsRawSql: false, sql: 'update t set x = $1', params: [42] }),
-    ).resolves.toEqual({
+    await expect(driver.execute({ sql: 'update t set x = $1', params: [42] })).resolves.toEqual({
       affectedRows: 3,
     });
     expect(calls).toHaveLength(1);
@@ -189,12 +176,7 @@ describe('postgres prepared statements', () => {
     cleanups.push(() => driver.close());
 
     const { slot } = makeSlot();
-    const request = {
-      containsRawSql: false,
-      sql: 'select id from t',
-      params: [],
-      preparedStatementHandle: slot,
-    };
+    const request = { sql: 'select id from t', params: [], preparedStatementHandle: slot };
     await expect(consume(driver.query<{ id: number }>(request))).resolves.toEqual([
       { id: 1 },
       { id: 2 },
@@ -219,14 +201,7 @@ describe('postgres prepared statements', () => {
 
     const { slot, snapshot } = makeSlot();
     await expect(
-      consume(
-        driver.query({
-          containsRawSql: false,
-          sql: 'select id from t',
-          params: [],
-          preparedStatementHandle: slot,
-        }),
-      ),
+      consume(driver.query({ sql: 'select id from t', params: [], preparedStatementHandle: slot })),
     ).resolves.toEqual([]);
 
     expect(snapshot()).toBe('pn_1');
@@ -252,18 +227,8 @@ describe('postgres prepared statements', () => {
 
     const { slot, snapshot } = makeSlot();
     const sql = 'update t set x = $1';
-    await driver.execute({
-      containsRawSql: false,
-      sql,
-      params: [42],
-      preparedStatementHandle: slot,
-    });
-    await driver.execute({
-      containsRawSql: false,
-      sql,
-      params: [99],
-      preparedStatementHandle: slot,
-    });
+    await driver.execute({ sql, params: [42], preparedStatementHandle: slot });
+    await driver.execute({ sql, params: [99], preparedStatementHandle: slot });
 
     expect(snapshot()).toBe('pn_1');
     expect(calls).toHaveLength(2);
@@ -283,11 +248,7 @@ describe('postgres prepared statements', () => {
 
     const { slot, snapshot } = makeSlot();
     await expect(
-      driver.execute({
-        containsRawSql: false,
-        sql: 'update t set x = 1',
-        preparedStatementHandle: slot,
-      }),
+      driver.execute({ sql: 'update t set x = 1', preparedStatementHandle: slot }),
     ).rejects.toBe(failure);
 
     expect(calls).toHaveLength(1);
@@ -340,12 +301,7 @@ describe('postgres prepared statements', () => {
 
       const { slot, snapshot } = makeSlot();
       const rejection = await driver
-        .execute({
-          containsRawSql: false,
-          sql: 'update t set x = $1',
-          params: [42],
-          preparedStatementHandle: slot,
-        })
+        .execute({ sql: 'update t set x = $1', params: [42], preparedStatementHandle: slot })
         .then(
           () => undefined,
           (error: unknown) => error,
@@ -388,12 +344,7 @@ describe('postgres prepared statements', () => {
 
       const { slot, snapshot } = makeSlot();
       const rejection = await consume(
-        driver.query({
-          containsRawSql: false,
-          sql: 'select 1',
-          params: [],
-          preparedStatementHandle: slot,
-        }),
+        driver.query({ sql: 'select 1', params: [], preparedStatementHandle: slot }),
       ).then(
         () => undefined,
         (error: unknown) => error,

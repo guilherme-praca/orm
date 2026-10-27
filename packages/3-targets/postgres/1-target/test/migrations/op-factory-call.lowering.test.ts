@@ -59,7 +59,6 @@ function recordingCheckLowerer(): { lowerer: ExecuteRequestLowerer; received: un
     lowerToExecuteRequest: async (ast) => {
       received.push(ast);
       return Object.freeze({
-        containsRawSql: false,
         sql: `LOWERED ${received.length}`,
         params: Object.freeze([`p${received.length}`]),
       });
