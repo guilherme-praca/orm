@@ -40,6 +40,11 @@ const constructors = {
     output: { codecId: 'test/wide-date@1', typeParams: { precision: { kind: 'arg', index: 0 } } },
   },
   WideText: { kind: 'typeConstructor', output: { codecId: 'test/wide-text@1' } },
+  Bounded: {
+    kind: 'typeConstructor',
+    args: [{ kind: 'value', dataType: 'test/int', name: 'length' }],
+    output: { codecId: 'test/bounded@1', typeParams: { length: { kind: 'arg', index: 0 } } },
+  },
 } as const satisfies AuthoringTypeNamespace;
 
 const check = (moment: AuthoringTypeChoiceDescriptor) => () =>
@@ -147,6 +152,69 @@ describe('assertTypeChoicesValid', () => {
     expect(check(choice({ args: [asOption, { ...precision, dataType: 'test/text' }] }))).toThrow(
       'Type choice "Moment" contributed by "x-pack" passes "precision" as a value of data type "test/text" to "WideDate", which takes "test/int".',
     );
+  });
+
+  describe('a row naming a constructor with a required argument', () => {
+    const length = { kind: 'value', dataType: 'test/int', name: 'length', optional: true } as const;
+    const boundedRow = (defaults?: Record<string, number>) =>
+      choice({
+        args: [asOption, length],
+        choices: [
+          { when: { as: 'date' }, type: 'WideText' },
+          { when: { as: 'text' }, type: 'Bounded', ...(defaults ? { defaults } : {}) },
+        ],
+      });
+
+    it('refuses the row when the choice does not pass the argument on', () => {
+      expect(
+        check(
+          choice({
+            args: [asOption],
+            choices: [
+              { when: { as: 'date' }, type: 'WideText' },
+              { when: { as: 'text' }, type: 'Bounded' },
+            ],
+          }),
+        ),
+      ).toThrow(
+        'Type choice "Moment" contributed by "x-pack" has a row for as: text that chooses "Bounded", which requires "length", and gives it no default.',
+      );
+    });
+
+    it('refuses the row when the choice passes the argument on as optional with no row default', () => {
+      expect(check(boundedRow())).toThrow(
+        'Type choice "Moment" contributed by "x-pack" has a row for as: text that chooses "Bounded", which requires "length", and gives it no default.',
+      );
+    });
+
+    it('refuses the row when the required argument has no name a default could use', () => {
+      expect(() =>
+        assertTypeChoicesValid(
+          {
+            ...constructors,
+            Unnamed: {
+              kind: 'typeConstructor',
+              args: [{ kind: 'value', dataType: 'test/int' }],
+              output: { codecId: 'test/unnamed@1' },
+            },
+            Moment: choice({
+              args: [asOption],
+              choices: [
+                { when: { as: 'date' }, type: 'WideText' },
+                { when: { as: 'text' }, type: 'Unnamed' },
+              ],
+            }),
+          },
+          'x-pack',
+        ),
+      ).toThrow(
+        'Type choice "Moment" contributed by "x-pack" has a row for as: text that chooses "Unnamed", which requires an unnamed argument 1, and gives it no default.',
+      );
+    });
+
+    it('passes the row when it gives the argument a default', () => {
+      expect(check(boundedRow({ length: 255 }))).not.toThrow();
+    });
   });
 });
 

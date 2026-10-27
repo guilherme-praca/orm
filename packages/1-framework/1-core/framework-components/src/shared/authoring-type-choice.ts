@@ -387,6 +387,15 @@ function assertTypeChoiceValid(
         );
       }
     }
+    chosenType.args?.forEach((parameter, index) => {
+      if (parameter.optional === true) return;
+      if (parameter.name !== undefined && Object.hasOwn(row.defaults ?? {}, parameter.name)) return;
+      const required =
+        parameter.name === undefined ? `an unnamed argument ${index + 1}` : `"${parameter.name}"`;
+      invalid(
+        `has a row for ${typeChoiceCombinationText(row)} that chooses "${row.type}", which requires ${required}, and gives it no default.`,
+      );
+    });
   }
   const defaults: AuthoringTypeChoiceRow = {
     when: Object.fromEntries(options.map((option) => [option.name, option.default])),
@@ -402,7 +411,7 @@ function assertTypeChoiceValid(
 }
 
 /**
- * Refuses a type choice of a component's `contributed` type namespace whose table cannot be resolved: a row that names no type constructor the same component contributes at the same level, a combination or default an option does not list, defaults with no row, a parameter default for an argument it does not pass on, or a passed-on argument of another data type than the constructor takes. ADR 279: each row names an explicit type of the same target.
+ * Refuses a type choice of a component's `contributed` type namespace whose table cannot be resolved: a row that names no type constructor the same component contributes at the same level, a combination or default an option does not list, defaults with no row, a parameter default for an argument it does not pass on, a passed-on argument of another data type than the constructor takes, or a row whose constructor requires an argument the row gives no default. ADR 279: each row names an explicit type of the same target.
  */
 export function assertTypeChoicesValid(
   contributed: AuthoringTypeNamespace,
