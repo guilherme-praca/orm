@@ -54,7 +54,7 @@ export async function withMongod<T>(fn: (ctx: MongodContext) => Promise<T>): Pro
   });
   const context = createMongoExecutionContext({ contract: {}, stack });
   const driver = await createMongoDriver(connectionUri, dbName);
-  const runtime = createMongoRuntime({ context, driver });
+  const runtime = createMongoRuntime({ context, stack, driver });
 
   // Cast back to `MongoCodecRegistry` — the test setup is the one place that
   // legitimately mutates the per-execution registry mid-flight (to install

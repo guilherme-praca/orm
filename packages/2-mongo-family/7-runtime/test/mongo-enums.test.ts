@@ -1,8 +1,8 @@
 import type { ContractEnum } from '@internal/contract/types';
 import { type DataTypeValue, dataType, readJsonString } from '@internal/framework-components/codec';
+import type { MongoCodecLookup } from '@internal/mongo-query-ast/execution';
 import { describe, expect, it } from 'vitest';
 import { buildMongoEnums } from '../src/mongo-enums';
-import type { MongoCodecLookup } from '../src/mongo-execution-stack';
 
 const level: ContractEnum = {
   codecId: 'test/level@1',

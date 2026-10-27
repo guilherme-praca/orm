@@ -149,7 +149,7 @@ describe('createMongoExecutionContext', () => {
     });
   });
 
-  it('returns a frozen { contract, codecs, stack } object', () => {
+  it('returns a frozen { contract, codecs } object with no stack', () => {
     const stack = createMongoExecutionStack({
       target: mongoRuntimeTarget,
       adapter: mongoRuntimeAdapter,
@@ -158,7 +158,7 @@ describe('createMongoExecutionContext', () => {
     const context = createMongoExecutionContext({ contract, stack });
     expect(Object.isFrozen(context)).toBe(true);
     expect(context.contract).toBe(contract);
-    expect(context.stack).toBe(stack);
+    expect(Object.keys(context)).not.toContain('stack');
   });
 
   it('preserves the TContract type on context.contract (no unknown widening)', () => {

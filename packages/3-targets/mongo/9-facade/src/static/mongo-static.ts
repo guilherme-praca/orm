@@ -15,6 +15,7 @@ import {
   createMongoExecutionStack,
   type MongoEnumAccessors,
   type MongoExecutionContext,
+  type MongoExecutionStack,
 } from '@internal/mongo-runtime';
 import mongoRuntimeTarget from '@internal/target-mongo/runtime';
 import { assertDefined } from '@internal/utils/assertions';
@@ -39,6 +40,7 @@ export interface MongoClientStaticContext<
   TContract extends MongoContractWithTypeMaps<MongoContract, AnyMongoTypeMaps>,
 > extends MongoStaticContext<TContract> {
   readonly enumsByNamespace: MongoEnumAccessors;
+  readonly stack: MongoExecutionStack;
 }
 
 export function buildMongoStaticContext<
@@ -58,7 +60,7 @@ export function buildMongoStaticContext<
   >(unbound);
   const query = mongoQuery({ context });
   const raw = mongoRaw<TContract>({ contract });
-  return { context, contract, enums, enumsByNamespace, query, raw };
+  return { context, contract, enums, enumsByNamespace, query, raw, stack };
 }
 
 /**

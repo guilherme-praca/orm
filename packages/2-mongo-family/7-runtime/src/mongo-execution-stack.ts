@@ -15,13 +15,13 @@ import {
   assertMutationDefaultGeneratorsAvailable,
   collectMutationDefaultGenerators,
   type MutationDefaultGeneratorContributor,
-  type MutationDefaults,
   type MutationDefaultsOptions,
   runtimeError,
 } from '@internal/framework-components/runtime';
 import type { MongoCodec } from '@internal/mongo-codec';
 import { type MongoCodecRegistry, newMongoCodecRegistry } from '@internal/mongo-codec';
 import type { MongoAdapter } from '@internal/mongo-lowering';
+import type { MongoExecutionContext } from '@internal/mongo-query-ast/execution';
 import { blindCast } from '@internal/utils/casts';
 
 /**
@@ -107,37 +107,13 @@ export function createMongoExecutionStack<TTargetId extends string = 'mongo'>(op
   >(stack);
 }
 
-/**
- * Read-only view of the codec registry exposed on `MongoExecutionContext`.
- *
- * Hides `register()` and the iterator from public surface — users do not mutate the per-execution codec registry. Internal aggregation in `createMongoExecutionContext` keeps using the full `MongoCodecRegistry` (it needs `register()`).
- */
-export interface MongoCodecLookup {
-  get(id: string): MongoCodec<string> | undefined;
-  has(id: string): boolean;
-}
-
-/**
- * Per-execution context aggregated from a `MongoExecutionStack`.
- *
- * Carries the user's contract, a read-only lookup over the codec registry composed from every stack contributor, a back-reference to the stack itself so the runtime can reach the adapter without users threading it explicitly, and `applyMutationDefaults`, which fills the contract's execution defaults from the composed generators.
- *
- * Mirrors SQL's `ExecutionContext` in role; Mongo's flavour is leaner because there are no parameterised codecs or JSON-schema validators in scope yet.
- */
-export interface MongoExecutionContext<TContract = unknown, TTargetId extends string = 'mongo'>
-  extends MutationDefaults {
-  readonly contract: TContract;
-  readonly codecs: MongoCodecLookup;
-  readonly stack: MongoExecutionStack<TTargetId>;
-}
-
 export function createMongoExecutionContext<
   TContract = unknown,
   TTargetId extends string = 'mongo',
 >(options: {
   readonly contract: TContract;
   readonly stack: MongoExecutionStack<TTargetId>;
-}): MongoExecutionContext<TContract, TTargetId> {
+}): MongoExecutionContext<TContract> {
   const registry = newMongoCodecRegistry();
   const owners = new Map<string, string>();
 
@@ -170,7 +146,6 @@ export function createMongoExecutionContext<
   return Object.freeze({
     contract: options.contract,
     codecs: registry,
-    stack: options.stack,
     applyMutationDefaults: (mutation: MutationDefaultsOptions) =>
       applyMutationDefaults(execution, generators, mutation),
   });

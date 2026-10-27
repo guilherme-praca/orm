@@ -5,6 +5,7 @@ import {
   contractFieldToMongoFieldShape,
   contractModelToMongoResultShape,
 } from '../src/result-shape';
+import { contextOf } from './fixtures/test-context';
 import { testContract } from './fixtures/test-contract';
 
 describe('contractModelToMongoResultShape', () => {
@@ -197,14 +198,14 @@ describe('contractFieldToMongoFieldShape', () => {
 
 describe('PipelineChain build resultShape', () => {
   it('identity pipeline attaches document shape from bound model', () => {
-    const plan = mongoQuery({ context: { contract: testContract } })
+    const plan = mongoQuery({ context: contextOf(testContract) })
       .from('orders')
       .build();
     expect(plan.resultShape?.kind).toBe('document');
   });
 
   it('project stage reifies a document shape retaining _id and the projected field', () => {
-    const plan = mongoQuery({ context: { contract: testContract } })
+    const plan = mongoQuery({ context: contextOf(testContract) })
       .from('orders')
       .match(MongoFieldFilter.eq('status', 'x'))
       .project('status')

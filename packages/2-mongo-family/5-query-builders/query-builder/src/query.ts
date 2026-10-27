@@ -5,7 +5,11 @@ import type {
   MongoContractWithTypeMaps,
   RootModelName,
 } from '@internal/mongo-contract';
-import type { AnyMongoCommand, MongoQueryPlan } from '@internal/mongo-query-ast/execution';
+import type {
+  AnyMongoCommand,
+  MongoExecutionContext,
+  MongoQueryPlan,
+} from '@internal/mongo-query-ast/execution';
 import { contractError } from './contract-errors';
 import { asMongoContract, type CollectionHandle, createCollectionHandle } from './state-classes';
 
@@ -32,7 +36,7 @@ export interface QueryRoot<
 /** Builds queries for the contract of `context`, which `mongoStatic({ contract })` and `mongo({ contract })` create after validating the contract. */
 export function mongoQuery<
   TContract extends MongoContractWithTypeMaps<MongoContract, AnyMongoTypeMaps>,
->(options: { readonly context: { readonly contract: TContract } }): QueryRoot<TContract> {
+>(options: { readonly context: MongoExecutionContext<TContract> }): QueryRoot<TContract> {
   const { contract } = options.context;
   return {
     from<K extends keyof TContract['roots'] & string>(rootName: K) {

@@ -2,11 +2,10 @@ import type { PlanMeta } from '@internal/contract/types';
 import type { CodecCallContext } from '@internal/framework-components/codec';
 import { type MongoCodecRegistry, newMongoCodecRegistry } from '@internal/mongo-codec';
 import type { MongoAdapter, MongoDriver, MongoLoweredDraft } from '@internal/mongo-lowering';
-import type { MongoQueryPlan } from '@internal/mongo-query-ast/execution';
+import type { MongoExecutionContext, MongoQueryPlan } from '@internal/mongo-query-ast/execution';
 import type { AnyMongoWireCommand } from '@internal/mongo-wire';
 import { describe, expect, it, vi } from 'vitest';
 import type {
-  MongoExecutionContext,
   MongoExecutionStack,
   MongoRuntimeAdapterDescriptor,
   MongoRuntimeAdapterInstance,
@@ -57,7 +56,10 @@ function recordingAdapter(): RecordingAdapter {
   return { adapter, observed, resolveCallCount };
 }
 
-function makeContext(adapter: MongoAdapter): MongoExecutionContext {
+function makeExecution(adapter: MongoAdapter): {
+  readonly context: MongoExecutionContext;
+  readonly stack: MongoExecutionStack;
+} {
   const codecs: MongoCodecRegistry = newMongoCodecRegistry();
   const adapterInstance: MongoRuntimeAdapterInstance<'mongo'> = {
     familyId: 'mongo',
@@ -90,7 +92,10 @@ function makeContext(adapter: MongoAdapter): MongoExecutionContext {
     driver: undefined,
     extensions: [],
   };
-  return Object.freeze({ contract: {}, codecs, stack, applyMutationDefaults: () => [] });
+  return {
+    context: Object.freeze({ contract: {}, codecs, applyMutationDefaults: () => [] }),
+    stack,
+  };
 }
 
 function rowsDriver(rows: Record<string, unknown>[] = []): MongoDriver {
@@ -116,7 +121,7 @@ describe('MongoRuntime operations abort + ctx threading', () => {
   it('query(plan) with no options threads a ctx whose signal is undefined', async () => {
     const { adapter, observed } = recordingAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: rowsDriver([{ _id: '1' }]),
     });
 
@@ -129,7 +134,7 @@ describe('MongoRuntime operations abort + ctx threading', () => {
   it('query(plan, undefined) and query(plan, {}) thread ctx with undefined signal', async () => {
     const { adapter, observed } = recordingAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: rowsDriver([]),
     });
 
@@ -143,7 +148,7 @@ describe('MongoRuntime operations abort + ctx threading', () => {
   it('threads { signal } through query → resolveParams as a CodecCallContext (signal identity preserved)', async () => {
     const { adapter, observed } = recordingAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: rowsDriver([{ _id: '1' }]),
     });
 
@@ -159,7 +164,7 @@ describe('MongoRuntime operations abort + ctx threading', () => {
     const { adapter, resolveCallCount } = recordingAdapter();
     const driver = rowsDriver([{ _id: '1' }]);
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver,
     });
 
@@ -185,7 +190,7 @@ describe('MongoRuntime operations abort + ctx threading', () => {
   it('rejects already-aborted execute before lowering or driver delegation', async () => {
     const { adapter, resolveCallCount } = recordingAdapter();
     const driver = rowsDriver([{ modifiedCount: 1 }]);
-    const runtime = createMongoRuntime({ context: makeContext(adapter), driver });
+    const runtime = createMongoRuntime({ ...makeExecution(adapter), driver });
     const controller = new AbortController();
     const reason = new Error('statistics execution aborted');
     controller.abort(reason);

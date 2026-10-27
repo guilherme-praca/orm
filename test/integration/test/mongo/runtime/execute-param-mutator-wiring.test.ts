@@ -9,6 +9,7 @@ import {
   createMongoExecutionStack,
   createMongoRuntime,
   type MongoExecutionContext,
+  type MongoExecutionStack,
 } from '@internal/mongo-runtime';
 import { MongoParamRef } from '@internal/mongo-value';
 import type { AnyMongoWireCommand } from '@internal/mongo-wire';
@@ -25,12 +26,15 @@ const baseMeta: PlanMeta = {
   lane: 'orm',
 };
 
-function buildStackContext(): MongoExecutionContext {
+function buildExecution(): {
+  readonly context: MongoExecutionContext;
+  readonly stack: MongoExecutionStack;
+} {
   const stack = createMongoExecutionStack({
     target: mongoRuntimeTarget,
     adapter: mongoRuntimeAdapter,
   });
-  return createMongoExecutionContext({ contract: {}, stack });
+  return { context: createMongoExecutionContext({ contract: {}, stack }), stack };
 }
 
 function recordingDriver(): {
@@ -66,7 +70,7 @@ describe('MongoRuntime execute param-mutator wiring', () => {
 
     const { driver } = recordingDriver();
     const runtime = createMongoRuntime({
-      context: buildStackContext(),
+      ...buildExecution(),
       driver,
       middleware: [middleware],
     });
@@ -106,7 +110,7 @@ describe('MongoRuntime execute param-mutator wiring', () => {
 
     const { driver, commands } = recordingDriver();
     const runtime = createMongoRuntime({
-      context: buildStackContext(),
+      ...buildExecution(),
       driver,
       middleware: [middleware],
     });
@@ -136,8 +140,8 @@ describe('MongoRuntime execute param-mutator wiring', () => {
     let structuralDraft: MongoLoweredDraft | undefined;
     const resolveDraftRefs: MongoLoweredDraft[] = [];
 
-    const context = buildStackContext();
-    const adapterInstance = context.stack.adapter.create(context.stack);
+    const { stack } = buildExecution();
+    const adapterInstance = stack.adapter.create(stack);
     const structuralLowerSpy = vi.fn((plan) => {
       structuralDraft = adapterInstance.structuralLower(plan);
       return structuralDraft;
@@ -161,7 +165,7 @@ describe('MongoRuntime execute param-mutator wiring', () => {
     const patchedContext = createMongoExecutionContext({ contract: {}, stack: patchedStack });
 
     const { driver } = recordingDriver();
-    const runtime = createMongoRuntime({ context: patchedContext, driver });
+    const runtime = createMongoRuntime({ context: patchedContext, stack: patchedStack, driver });
 
     await runtime
       .query({
@@ -205,7 +209,7 @@ describe('MongoRuntime execute param-mutator wiring', () => {
       };
       const { driver } = recordingDriver();
       const runtime = createMongoRuntime({
-        context: buildStackContext(),
+        ...buildExecution(),
         driver,
         middleware: [middleware, observer],
       });

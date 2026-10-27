@@ -86,7 +86,7 @@ export default function mongo<
   const contract = validateMongoContract(options.contract);
   let binding = resolveOptionalMongoBinding(options);
 
-  const { context, query, enums, enumsByNamespace, raw } =
+  const { context, stack, query, enums, enumsByNamespace, raw } =
     buildMongoStaticContext<TContract>(contract);
 
   // Single source of truth for the lifecycle. `runtimePromise` is the in-flight
@@ -106,6 +106,7 @@ export default function mongo<
     }
     return createMongoRuntime({
       context,
+      stack,
       driver,
       ...ifDefined('mode', options.mode),
       ...ifDefined('middleware', options.middleware),

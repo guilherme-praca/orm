@@ -8,7 +8,7 @@ import {
   createMockAdapter,
   createMockDriver,
   createPlan,
-  makeContext,
+  makeExecution,
 } from './mongo-middleware-fixtures';
 
 describe('MongoRuntime middleware lifecycle', () => {
@@ -41,7 +41,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: createMockDriver([{ _id: '1', name: 'Alice' }]),
       middleware: [middleware],
     });
@@ -64,7 +64,7 @@ describe('MongoRuntime middleware lifecycle', () => {
   it('works with no middleware', async () => {
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: createMockDriver([{ _id: '1' }]),
     });
 
@@ -80,9 +80,13 @@ describe('MongoRuntime middleware lifecycle', () => {
     const calls: string[] = [];
     const contexts: MongoMiddlewareContext[] = [];
     const driver = createMockDriver([{ deletedCount: 99 }]);
-    const context = makeContext(createMockAdapter(), new DeleteOneWireCommand('users', { id: 1 }));
+    const { context, stack } = makeExecution(
+      createMockAdapter(),
+      new DeleteOneWireCommand('users', { id: 1 }),
+    );
     const runtime = createMongoRuntime({
       context,
+      stack,
       driver,
       middleware: [
         {
@@ -157,7 +161,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: createMockDriver([]),
       middleware: [middleware],
     });
@@ -193,7 +197,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: failingDriver,
       middleware: [middleware],
     });
@@ -226,7 +230,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: failingDriver,
       middleware: [middleware],
     });
@@ -258,7 +262,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: failingDriver,
       middleware: [middleware],
     });
@@ -283,7 +287,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: createMockDriver([{ _id: '1' }, { _id: '2' }, { _id: '3' }]),
       middleware: [middleware],
     });
@@ -306,7 +310,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: createMockDriver([]),
       middleware: [middleware],
       mode: 'permissive',
@@ -334,7 +338,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: createMockDriver([]),
       middleware: [middleware],
     });
@@ -360,7 +364,7 @@ describe('MongoRuntime middleware lifecycle', () => {
 
     const adapter = createMockAdapter();
     const runtime = createMongoRuntime({
-      context: makeContext(adapter),
+      ...makeExecution(adapter),
       driver: createMockDriver([{ _id: '1' }, { _id: '2' }, { _id: '3' }]),
       middleware: [middleware],
     });

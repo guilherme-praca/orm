@@ -43,6 +43,7 @@ describe('Mongo runtime content hash before param resolution', () => {
     } as unknown as MongoDriver;
     const runtime = createMongoRuntime({
       context,
+      stack,
       driver,
       middleware: [middleware],
     });

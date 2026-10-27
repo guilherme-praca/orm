@@ -2,21 +2,20 @@ import type { PlanMeta } from '@internal/contract/types';
 import type { CodecCallContext } from '@internal/framework-components/codec';
 import { type MongoCodecRegistry, newMongoCodecRegistry } from '@internal/mongo-codec';
 import type { MongoAdapter, MongoDriver, MongoLoweredDraft } from '@internal/mongo-lowering';
-import type { MongoQueryPlan } from '@internal/mongo-query-ast/execution';
+import type { MongoExecutionContext, MongoQueryPlan } from '@internal/mongo-query-ast/execution';
 import { AggregateWireCommand, type AnyMongoDmlWireCommand } from '@internal/mongo-wire';
 import { vi } from 'vitest';
 import type {
-  MongoExecutionContext,
   MongoExecutionStack,
   MongoRuntimeAdapterDescriptor,
   MongoRuntimeAdapterInstance,
   MongoRuntimeTargetDescriptor,
 } from '../src/mongo-execution-stack';
 
-export function makeContext(
+export function makeExecution(
   _adapter: MongoAdapter,
   wireCommand: AnyMongoDmlWireCommand = new AggregateWireCommand('users', []),
-): MongoExecutionContext {
+): { readonly context: MongoExecutionContext; readonly stack: MongoExecutionStack } {
   const codecs: MongoCodecRegistry = newMongoCodecRegistry();
   const adapterInstance: MongoRuntimeAdapterInstance<'mongo'> = {
     familyId: 'mongo',
@@ -57,7 +56,10 @@ export function makeContext(
     driver: undefined,
     extensions: [],
   };
-  return Object.freeze({ contract: {}, codecs, stack, applyMutationDefaults: () => [] });
+  return {
+    context: Object.freeze({ contract: {}, codecs, applyMutationDefaults: () => [] }),
+    stack,
+  };
 }
 
 export const baseMeta: PlanMeta = {

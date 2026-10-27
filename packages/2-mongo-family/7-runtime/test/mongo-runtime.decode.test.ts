@@ -64,7 +64,7 @@ function runtimeOver(driver: MongoDriver) {
     },
   });
   const context = createMongoExecutionContext({ contract: {}, stack });
-  return createMongoRuntime({ context, driver });
+  return createMongoRuntime({ context, stack, driver });
 }
 
 function driverYielding(rows: readonly Record<string, unknown>[]): MongoDriver {

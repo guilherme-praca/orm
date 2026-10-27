@@ -1,10 +1,11 @@
 import { InsertOneCommand, RawAggregateCommand } from '@internal/mongo-query-ast/execution';
 import { describe, expect, it } from 'vitest';
 import { mongoQuery } from '../src/query';
+import { contextOf } from './fixtures/test-context';
 import type { TContract } from './fixtures/test-contract';
 import { testContract } from './fixtures/test-contract';
 
-const root = () => mongoQuery({ context: { contract: testContract } });
+const root = () => mongoQuery({ context: contextOf(testContract) });
 
 describe('M5 raw escape hatch', () => {
   it('packages a typed CRUD command into a plan with lane: mongo-query', () => {
@@ -27,7 +28,7 @@ describe('M5 raw escape hatch', () => {
     const cmd = new InsertOneCommand('orders', { status: 'new' });
     expect(() =>
       mongoQuery({
-        context: { contract: { ...testContract, storage: {} } as unknown as TContract },
+        context: contextOf({ ...testContract, storage: {} } as unknown as TContract),
       }).rawCommand(cmd),
     ).toThrow(/storageHash/);
   });

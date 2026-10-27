@@ -8,15 +8,15 @@ const id = 'mongo-query-takes-context';
 const facadePackage = ['@prisma', 'orm-mongo'].join('/');
 const familyPackage = ['@prisma', 'orm-family-mongo'].join('/');
 
-function detects(audience: 'app' | 'extension', content: string): boolean {
+function detects(audience: 'app' | 'extension', content: string, change = id): boolean {
   const path = `upgrade-instructions/pending/mongo-query-takes-context/${audience}/instructions.md`;
   const guide = readFileSync(join(repoRoot, path), 'utf-8');
-  const entry = guide.split(/\n {2}- id: /).find((block) => block.startsWith(`${id}\n`));
-  if (entry === undefined) throw new Error(`The ${audience} guide has no change ${id}`);
+  const entry = guide.split(/\n {2}- id: /).find((block) => block.startsWith(`${change}\n`));
+  if (entry === undefined) throw new Error(`The ${audience} guide has no change ${change}`);
   const patterns = [...entry.matchAll(/^ {8}- '(.*)'$/gm)].map(
     ([, pattern]) => new RegExp((pattern ?? '').replaceAll("''", "'")),
   );
-  if (patterns.length === 0) throw new Error(`The ${audience} change ${id} has no detection`);
+  if (patterns.length === 0) throw new Error(`The ${audience} change ${change} has no detection`);
   return patterns.some((pattern) => pattern.test(content));
 }
 
@@ -45,5 +45,25 @@ describe.each(['app', 'extension'] as const)('the %s mongoQuery detection', (aud
     ],
   ])('skips %s', (_name, content) => {
     expect(detects(audience, content)).toBe(false);
+  });
+});
+
+describe.each(['app', 'extension'] as const)('the %s runtime stack detection', (audience) => {
+  const change = 'mongo-runtime-takes-stack';
+
+  it.each([
+    ['a runtime built from a context', 'const runtime = createMongoRuntime({ context, driver });'],
+    ['the stack read from a context', 'const adapter = context.stack.adapter;'],
+    ['the stack read from a named context', 'mongoContext.stack.target.targetId'],
+  ])('finds %s', (_name, content) => {
+    expect(detects(audience, content, change)).toBe(true);
+  });
+
+  it.each([
+    ['a stack read from a stack', 'stack.adapter.create(stack)'],
+    ['a method of the same name', 'factory.createMongoRuntime({ context })'],
+    ['a stack on another object', 'options.stack.adapter'],
+  ])('skips %s', (_name, content) => {
+    expect(detects(audience, content, change)).toBe(false);
   });
 });

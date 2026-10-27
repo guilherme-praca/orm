@@ -36,7 +36,7 @@ export async function withMongod<T>(fn: (ctx: MongodContext) => Promise<T>): Pro
     });
     const context = createMongoExecutionContext({ contract: {}, stack });
     const driver = await createMongoDriver(connectionUri, dbName);
-    runtime = createMongoRuntime({ context, driver });
+    runtime = createMongoRuntime({ context, stack, driver });
 
     const ctx: MongodContext = { connectionUri, dbName, client, runtime, codecs: context.codecs };
     return await fn(ctx);
@@ -96,7 +96,7 @@ export function describeWithMongoDB(name: string, fn: (ctx: MongodContext) => vo
       });
       const context = createMongoExecutionContext({ contract: {}, stack });
       const driver = await createMongoDriver(replSet.getUri(), dbName);
-      runtime = createMongoRuntime({ context, driver });
+      runtime = createMongoRuntime({ context, stack, driver });
       codecs = context.codecs;
     }, timeouts.spinUpMongoMemoryServer);
 

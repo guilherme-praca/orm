@@ -41,7 +41,7 @@ describe('Mongo ORM polymorphism integration', {
     });
     const context = createMongoExecutionContext({ contract: {}, stack });
     const driver = await createMongoDriver(replSet.getUri(), dbName);
-    runtime = createMongoRuntime({ context, driver });
+    runtime = createMongoRuntime({ context, stack, driver });
     enums = buildMongoEnums(contract, context.codecs);
   }, timeouts.spinUpMongoMemoryServer);
 

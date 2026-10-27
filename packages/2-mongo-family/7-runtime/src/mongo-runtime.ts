@@ -14,13 +14,17 @@ import {
   streamStatement,
 } from '@internal/framework-components/runtime';
 import type { MongoAdapter, MongoDriver } from '@internal/mongo-lowering';
-import type { MongoQueryPlan } from '@internal/mongo-query-ast/execution';
+import type {
+  MongoCodecLookup,
+  MongoExecutionContext,
+  MongoQueryPlan,
+} from '@internal/mongo-query-ast/execution';
 import { blindCast } from '@internal/utils/casts';
 import { ifDefined } from '@internal/utils/defined';
 import { decodeMongoRow } from './codecs/decoding';
 import { computeMongoContentHash } from './content-hash';
 import type { MongoExecutionPlan } from './mongo-execution-plan';
-import type { MongoCodecLookup, MongoExecutionContext } from './mongo-execution-stack';
+import type { MongoExecutionStack } from './mongo-execution-stack';
 import type { MongoMiddleware, MongoMiddlewareContext } from './mongo-middleware';
 import {
   createMongoParamRefMutator,
@@ -65,15 +69,16 @@ function invalidStatisticsResult(commandKind: string, countField: string): Error
  * Mongo runtime options.
  *
  * The runtime takes a {@link MongoExecutionContext} (built via
- * `createMongoExecutionContext`) and a driver. Codec resolution flows from
- * the context — there is no `codecs` field on this options bag. The adapter
- * is reached via `context.stack.adapter` (instantiated lazily through the
- * stack's `create(stack)` factory). See ADR — Mongo result-shape as a
+ * `createMongoExecutionContext`), the execution stack the context was built
+ * from, and a driver. Codec resolution flows from the context — there is no
+ * `codecs` field on this options bag. The adapter comes from `stack.adapter`
+ * (instantiated through the stack's `create(stack)` factory). See ADR — Mongo result-shape as a
  * structural plan field, § Codec registry: stack aggregation, not user
  * threading.
  */
 export interface MongoRuntimeOptions {
   readonly context: MongoExecutionContext;
+  readonly stack: MongoExecutionStack;
   readonly driver: MongoDriver;
   readonly middleware?: readonly MongoMiddleware[];
   readonly mode?: RuntimeMode;
@@ -117,7 +122,7 @@ class MongoRuntimeImpl
 
   constructor(options: MongoRuntimeOptions) {
     const middleware = options.middleware ?? [];
-    const targetId = options.context.stack.target.targetId;
+    const targetId = options.stack.target.targetId;
     for (const mw of middleware) {
       checkMiddlewareCompatibility(mw, 'mongo', targetId);
     }
@@ -145,8 +150,7 @@ class MongoRuntimeImpl
     super({ middleware, ctx });
     this.#contextFields = ctx;
 
-    const adapterDescriptor = options.context.stack.adapter;
-    const adapterInstance = adapterDescriptor.create(options.context.stack);
+    const adapterInstance = options.stack.adapter.create(options.stack);
     this.#adapter = adapterInstance;
     this.#driver = options.driver;
     this.#codecs = options.context.codecs;
