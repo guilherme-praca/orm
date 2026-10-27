@@ -12,15 +12,16 @@ import {
   checkContractComponentRequirements,
   mergeCapabilityMatrices,
 } from '@internal/framework-components/components';
-import type {
-  RuntimeAdapterDescriptor,
-  RuntimeAdapterInstance,
-  RuntimeDriverDescriptor,
-  RuntimeDriverInstance,
-  RuntimeExtensionDescriptor,
-  RuntimeExtensionInstance,
-  RuntimeTargetDescriptor,
-  RuntimeTargetInstance,
+import {
+  createExecutionStack,
+  type RuntimeAdapterDescriptor,
+  type RuntimeAdapterInstance,
+  type RuntimeDriverDescriptor,
+  type RuntimeDriverInstance,
+  type RuntimeExtensionDescriptor,
+  type RuntimeExtensionInstance,
+  type RuntimeTargetDescriptor,
+  type RuntimeTargetInstance,
 } from '@internal/framework-components/execution';
 import {
   applyMutationDefaults,
@@ -155,12 +156,14 @@ export function createSqlExecutionStack<TTargetId extends string>(
     readonly driver?: SqlExecutionStackWithDriver<TTargetId>['driver'];
   },
 ): SqlExecutionStack<TTargetId> | SqlExecutionStackWithDriver<TTargetId> {
-  const stack = {
+  const stack = createExecutionStack({
     target: options.target,
     adapter: options.adapter,
-    extensions: options.extensions ?? [],
-  };
-  return options.driver === undefined ? stack : { ...stack, driver: options.driver };
+    driver: options.driver,
+    extensions: options.extensions,
+  });
+  const { driver } = stack;
+  return driver === undefined ? stack : { ...stack, driver };
 }
 
 export type { ExecutionContext };
