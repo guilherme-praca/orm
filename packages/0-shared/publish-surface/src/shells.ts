@@ -359,6 +359,7 @@ export const publicShells: ReadonlyMap<ShellName, ShellDefinition> = new Map<
             'control-api/testing',
             'config-types',
             'init-output',
+            'standalone',
           ],
         },
         {

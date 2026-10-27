@@ -6,6 +6,7 @@ export default defineConfig({
     'src/exports/index.ts',
     'src/exports/config-types.ts',
     'src/exports/init-output.ts',
+    'src/exports/standalone.ts',
     'src/migration-cli.ts',
     'src/exports/control-api.ts',
     'src/exports/control-api-testing.ts',
