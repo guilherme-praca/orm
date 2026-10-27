@@ -25,8 +25,6 @@ import type {
   AuthoringContributions,
   AuthoringDescriptorKinds,
   AuthoringEntityTypeNamespace,
-  AuthoringFieldNamespace,
-  AuthoringFieldPresetDescriptor,
   AuthoringModelAttributeDescriptorNamespace,
   AuthoringPslBlockDescriptorNamespace,
   AuthoringTypeConstructorDescriptor,
@@ -35,6 +33,7 @@ import type {
 } from '../shared/framework-authoring';
 import {
   AUTHORING_TYPE_DESCRIPTOR_KINDS,
+  assertNoAuthoringFieldNamespace,
   assertNoCrossRegistryCollisions,
   assertResolvableTypeConstructorTemplates,
   assertTypeAliasesValid,
@@ -70,7 +69,6 @@ import type {
 } from './control-descriptors';
 
 export interface AssembledAuthoringContributions {
-  readonly field: AuthoringFieldNamespace;
   readonly type: AuthoringTypeNamespace;
   readonly entityTypes: AuthoringEntityTypeNamespace;
   readonly pslBlockDescriptors: AuthoringPslBlockDescriptorNamespace;
@@ -223,7 +221,6 @@ export function assembleAuthoringContributions(
     descriptors,
   ),
 ): AssembledAuthoringContributions {
-  const field = {} as Record<string, unknown>;
   const type = {} as Record<string, unknown>;
   const entityTypes = {} as Record<string, unknown>;
   const pslBlockDescriptors: Record<string, unknown> = {};
@@ -260,6 +257,7 @@ export function assembleAuthoringContributions(
 
   for (const descriptor of descriptors) {
     const descriptorId = descriptor.id ?? '<unknown>';
+    assertNoAuthoringFieldNamespace(descriptorId, descriptor.authoring);
     const declaredValueObjectStorageType = descriptor.authoring?.valueObjectStorageType;
     if (declaredValueObjectStorageType !== undefined) {
       if (valueObjectStorageDeclaration !== undefined) {
@@ -273,10 +271,6 @@ export function assembleAuthoringContributions(
         name: declaredValueObjectStorageType,
         ownerId: descriptorId,
       };
-    }
-    if (descriptor.authoring?.field) {
-      claimContributedPaths(descriptor.authoring.field, 'fieldPreset', 'field', descriptorId);
-      mergeAuthoringNamespaces(field, descriptor.authoring.field, [], 'fieldPreset', 'field');
     }
     if (descriptor.authoring?.type) {
       claimContributedPaths(
@@ -338,7 +332,6 @@ export function assembleAuthoringContributions(
     }
   }
 
-  const fieldNamespace = field as AuthoringFieldNamespace;
   const typeNamespace = type as AuthoringTypeNamespace;
   const entityTypeNamespace = entityTypes as AuthoringEntityTypeNamespace;
   const pslBlockDescriptorNamespace = blindCast<
@@ -351,7 +344,6 @@ export function assembleAuthoringContributions(
   >(modelAttributes);
   assertNoCrossRegistryCollisions(
     typeNamespace,
-    fieldNamespace,
     entityTypeNamespace,
     pslBlockDescriptorNamespace,
     modelAttributeNamespace,
@@ -373,7 +365,6 @@ export function assembleAuthoringContributions(
 
   return {
     dataTypes,
-    field: fieldNamespace,
     type: typeNamespace,
     entityTypes: entityTypeNamespace,
     pslBlockDescriptors: pslBlockDescriptorNamespace,
@@ -393,37 +384,32 @@ export interface HelperCodecInvariantInput {
   ) => Pick<AnyCodecDescriptor, 'dataType' | 'paramsSchema'> | undefined;
 }
 
-function argumentMappedKeys(
-  descriptor: AuthoringTypeConstructorDescriptor | AuthoringFieldPresetDescriptor,
-): readonly string[] {
+function argumentMappedKeys(descriptor: AuthoringTypeConstructorDescriptor): readonly string[] {
   return Object.entries(descriptor.output.typeParams ?? {}).flatMap(([key, template]) =>
     isAuthoringArgRef(template) ? [key] : [],
   );
 }
 
 /**
- * The checks on type constructors and field presets that read the stack's codecs, each naming the component and the id at fault:
+ * The checks on type constructors that read the stack's codecs, each naming the component and the id at fault:
  *
- * 1. every type constructor and field preset names a registered codec;
+ * 1. every type constructor names a registered codec;
  * 2. a type constructor maps its arguments only onto parameters its data type or codec declares;
  * 3. at most one type constructor per data type is marked inferred.
  *
- * {@link assembleDataTypeSupport} checks data types, their entries and casts, and the value arguments of type constructors and field presets.
+ * {@link assembleDataTypeSupport} checks data types, their entries and casts, and the value arguments of type constructors.
  */
 export function enforceHelperCodecInvariants(input: HelperCodecInvariantInput): void {
   const inferredBy = new Map<string, ContributedHelper>();
   for (const contributed of input.helpers) {
     const { path, descriptor, contributedBy } = contributed;
-    const kind = descriptor.kind === 'typeConstructor' ? 'Type constructor' : 'Field preset';
     const codecId = descriptor.output.codecId;
     const codec = input.codecDescriptorFor(codecId);
     if (codec === undefined) {
       throw new InternalError(
-        `${kind} "${path}" contributed by "${contributedBy}" names codec "${codecId}", which no component registers.`,
+        `Type constructor "${path}" contributed by "${contributedBy}" names codec "${codecId}", which no component registers.`,
       );
     }
-    if (descriptor.kind !== 'typeConstructor') continue;
-
     const codecKeys = codec.paramsSchema === undefined ? [] : objectSchemaKeys(codec.paramsSchema);
     if (codecKeys !== undefined) {
       const declared = new Set([

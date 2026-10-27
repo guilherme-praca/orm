@@ -1,5 +1,4 @@
 import type {
-  AuthoringFieldPresetDescriptor,
   AuthoringTypeChoiceDescriptor,
   AuthoringTypeConstructorDescriptor,
 } from '@internal/framework-components/authoring';
@@ -10,17 +9,6 @@ import { parse } from '../src/parse';
 import { PslSources } from '../src/source-file';
 import { buildSymbolTable } from '../src/symbol-table';
 
-export const createdAt: AuthoringFieldPresetDescriptor = {
-  kind: 'fieldPreset',
-  output: { codecId: 'fixture/timestamp@1' },
-};
-
-export const uuid: AuthoringFieldPresetDescriptor = {
-  kind: 'fieldPreset',
-  args: [{ kind: 'number', name: 'version' }],
-  output: { codecId: 'fixture/uuid@1', id: true },
-};
-
 export const text: AuthoringTypeConstructorDescriptor = {
   kind: 'typeConstructor',
   output: { codecId: 'fixture/text@1' },
@@ -28,7 +16,7 @@ export const text: AuthoringTypeConstructorDescriptor = {
 
 export const varchar: AuthoringTypeConstructorDescriptor = {
   kind: 'typeConstructor',
-  args: [{ kind: 'number', name: 'length' }],
+  args: [{ kind: 'value', dataType: 'fixture/int', name: 'length' }],
   output: { codecId: 'fixture/varchar@1' },
 };
 
@@ -89,7 +77,6 @@ function context(): BinderContext {
         NarrowDate: narrowDate,
         db: { VarChar: varchar, tagged, secondTagged },
       },
-      field: { temporal: { createdAt }, db: { uuid } },
       entityTypes: {},
       attributeSpecs: { model: {}, field: {} },
       modelAttributes: {},

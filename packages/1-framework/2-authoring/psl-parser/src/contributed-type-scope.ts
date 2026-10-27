@@ -1,5 +1,4 @@
 import {
-  type AuthoringFieldPresetDescriptor,
   type AuthoringTypeAliasDescriptor,
   type AuthoringTypeChoiceDescriptor,
   type AuthoringTypeConstructorDescriptor,
@@ -9,14 +8,14 @@ import {
 } from '@internal/framework-components/authoring';
 import { isInternalError } from '@internal/utils/internal-error';
 import { notOk, ok, type Result } from '@internal/utils/result';
+import { EMPTY_DATA_TYPES } from './attribute-spec/spec-context';
 import { readPslHelperArgs } from './authoring-arguments';
 import type { ResolvedTypeConstructorCall } from './resolve';
 
 export type ContributedTypeDescriptor =
   | AuthoringTypeConstructorDescriptor
   | AuthoringTypeAliasDescriptor
-  | AuthoringTypeChoiceDescriptor
-  | AuthoringFieldPresetDescriptor;
+  | AuthoringTypeChoiceDescriptor;
 
 export type ContributedTypeNamespace = {
   readonly [name: string]: ContributedTypeDescriptor | ContributedTypeNamespace;
@@ -71,10 +70,7 @@ export function isContributedTypeDescriptor(
 ): value is ContributedTypeDescriptor {
   return (
     'kind' in value &&
-    (value.kind === 'typeConstructor' ||
-      value.kind === 'typeAlias' ||
-      value.kind === 'typeChoice' ||
-      value.kind === 'fieldPreset')
+    (value.kind === 'typeConstructor' || value.kind === 'typeAlias' || value.kind === 'typeChoice')
   );
 }
 
@@ -122,22 +118,43 @@ export function contributedTypeCodecId(
     : descriptor.output.codecId;
 }
 
-export function mergeContributedTypes(
-  ...namespaces: readonly ContributedTypeNamespace[]
-): ContributedTypeNamespace {
-  const merged: Record<string, ContributedTypeDescriptor | ContributedTypeNamespace> = {};
-  for (const namespace of namespaces) {
-    for (const [name, value] of Object.entries(namespace)) {
-      const existing = Object.hasOwn(merged, name) ? merged[name] : undefined;
-      merged[name] =
-        existing !== undefined &&
-        !isContributedTypeDescriptor(existing) &&
-        !isContributedTypeDescriptor(value)
-          ? mergeContributedTypes(existing, value)
-          : value;
-    }
-  }
-  return merged;
+/** The descriptor at `path` in `namespace`, or `undefined` when none is contributed there. */
+export function contributedTypeAt(
+  namespace: ContributedTypeNamespace,
+  path: readonly string[],
+): ContributedTypeDescriptor | undefined {
+  const [name, ...rest] = path;
+  if (name === undefined || !Object.hasOwn(namespace, name)) return undefined;
+  const value = namespace[name];
+  if (value === undefined) return undefined;
+  if (isContributedTypeDescriptor(value)) return rest.length === 0 ? value : undefined;
+  return contributedTypeAt(value, rest);
+}
+
+/** The codec a column typed by the type at `path` in `namespace`, written bare, is stored with, or `undefined` when none is contributed there or it is a type choice whose defaults choose no type. */
+export function bareContributedTypeCodecId(
+  namespace: ContributedTypeNamespace,
+  path: readonly string[],
+): string | undefined {
+  return codecIdAtPath(namespace, path, []);
+}
+
+function codecIdAtPath(
+  namespace: ContributedTypeNamespace,
+  path: readonly string[],
+  prefix: readonly string[],
+): string | undefined {
+  const [name, ...rest] = path;
+  if (name === undefined || !Object.hasOwn(namespace, name)) return undefined;
+  const value = namespace[name];
+  if (value === undefined) return undefined;
+  const at = [...prefix, name];
+  if (!isContributedTypeDescriptor(value)) return codecIdAtPath(value, rest, at);
+  if (rest.length > 0) return undefined;
+  return contributedTypeCodecId(
+    { symbol: contributedTypeSymbol(name, at, value, namespace), call: undefined },
+    EMPTY_DATA_TYPES,
+  );
 }
 
 export function contributedTypeScope(

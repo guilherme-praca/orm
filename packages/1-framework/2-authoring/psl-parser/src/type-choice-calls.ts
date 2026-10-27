@@ -1,5 +1,4 @@
 import {
-  type AuthoringArgumentDescriptor,
   type DataTypeSupport,
   instantiateAuthoringTypeConstructor,
   resolveAuthoringTypeChoice,
@@ -18,7 +17,7 @@ import type { ResolvedTypeConstructorCall } from './resolve';
 /** The span of the argument at `index` of `descriptors` in `call`, named or positional, or the call's when it is not written. */
 export function argumentSpan(
   call: ResolvedTypeConstructorCall,
-  descriptors: readonly AuthoringArgumentDescriptor[] | undefined,
+  descriptors: readonly { readonly name?: string | undefined }[] | undefined,
   index: number | undefined,
 ): PslSpan {
   if (index === undefined) return call.span;

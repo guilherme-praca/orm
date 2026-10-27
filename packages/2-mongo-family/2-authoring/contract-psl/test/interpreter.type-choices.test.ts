@@ -8,6 +8,7 @@ import { interpretMongoContract } from './interpreter-test-helpers';
 const label = { kind: 'value', dataType: 'mongo/string', name: 'label', optional: true } as const;
 
 const type = {
+  ObjectId: { kind: 'typeConstructor', output: { codecId: 'mongo/objectId@1' } },
   Stamp: { kind: 'typeConstructor', output: { codecId: 'mongo/date@1' } },
   Text: {
     kind: 'typeConstructor',
@@ -31,7 +32,6 @@ const authoringContributions: AuthoringContributions = { type };
 
 function interpret(schema: string) {
   return interpretMongoContract(schema, {
-    scalarTypeCodecIds: new Map([['ObjectId', 'mongo/objectId@1']]),
     defaultFunctionRegistry: new Map(),
     authoringContributions,
   });

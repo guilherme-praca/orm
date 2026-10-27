@@ -1,28 +1,29 @@
 import type { JsonValue } from '@internal/contract/types';
 import { InternalError } from '@internal/utils/internal-error';
 import {
+  type AuthoringArgumentDescriptor,
   type AuthoringTypeConstructorDescriptor,
   type AuthoringTypeNamespace,
   type AuthoringTypeNamespaceMember,
-  type AuthoringValueArgument,
   instantiateAuthoringTypeConstructor,
   isAuthoringTypeChoiceDescriptor,
   isAuthoringTypeConstructorDescriptor,
   isAuthoringTypeDescriptor,
   type ScalarTypeConstructorOutput,
 } from './framework-authoring';
-import type { AuthoringOption } from './option-descriptor';
 import { runtimeError } from './runtime-error';
 
 /** An argument of a type choice that picks its row: one of `values`, written as a bare name, and `default` when it is left out. */
-export interface AuthoringTypeChoiceOption extends AuthoringOption {
+export interface AuthoringTypeChoiceOption {
+  readonly kind: 'option';
+  readonly values: readonly string[];
   readonly name: string;
   readonly default: string;
   readonly optional: true;
 }
 
 /** An argument a type choice passes on, by name, to the constructor its row names. */
-export type AuthoringTypeChoicePassedArgument = AuthoringValueArgument & {
+export type AuthoringTypeChoicePassedArgument = AuthoringArgumentDescriptor & {
   readonly name: string;
   readonly optional: true;
 };

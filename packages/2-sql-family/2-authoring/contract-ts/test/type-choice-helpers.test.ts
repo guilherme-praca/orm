@@ -56,7 +56,7 @@ describe('a type.* helper of a type choice', () => {
 
   it('refuses a value the option does not list', () => {
     expect(() => untyped({ as: 'jsDate' })).toThrow(
-      'Argument "as" of Moment must be one of "temporal", "string", "date"; received "jsDate"',
+      'Argument "as" of Moment is jsDate; write one of: temporal, string, date.',
     );
   });
 

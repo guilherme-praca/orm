@@ -90,7 +90,6 @@ const types = {
 
 const authoringContributions = {
   entityTypes: {},
-  field: {},
   pslBlockDescriptors: {},
   modelAttributes: {},
   type: types,

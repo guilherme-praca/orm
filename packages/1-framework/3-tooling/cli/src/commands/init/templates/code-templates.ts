@@ -138,14 +138,14 @@ import { defineContract } from '${builder}';
 
 export const contract = defineContract(
   {},
-  ({ field, model }) => ({
+  ({ field, model, gen, type }) => ({
     models: {
       User: model('User', {
         fields: {
-          id: field.id.uuidv7String(),
-          email: field.text().unique(),
-          username: field.text().optional(),
-          name: field.text().optional(),
+          id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)),
+          email: field.column(type.String()).unique(),
+          username: field.column(type.String()).optional(),
+          name: field.column(type.String()).optional(),
         },
       }),
     },
@@ -228,13 +228,13 @@ model Post {
 function starterSchemaTsPostgres(builder: string): string {
   return `import { defineContract, now } from '${builder}';
 
-export const contract = defineContract({}, ({ field, model, rel, type, gen }) => {
+export const contract = defineContract({}, ({ field, model, rel, gen, type }) => {
   const User = model('User', {
     fields: {
-      id: field.id.uuidv7String(),
-      email: field.text().unique(),
-      username: field.text().optional(),
-      name: field.text().optional(),
+      id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)),
+      email: field.column(type.String()).unique(),
+      username: field.column(type.String()).optional(),
+      name: field.column(type.String()).optional(),
       createdAt: field.column(type.DateTime()).default(now()).onCreate(gen.now()),
       updatedAt: field.column(type.temporal.UpdatedAt()),
     },
@@ -242,10 +242,10 @@ export const contract = defineContract({}, ({ field, model, rel, type, gen }) =>
 
   const Post = model('Post', {
     fields: {
-      id: field.id.uuidv7String(),
-      title: field.text(),
-      content: field.text().optional(),
-      authorId: field.uuidString(),
+      id: field.column(type.Uuid()).id().onCreate(gen.uuid(7)),
+      title: field.column(type.String()),
+      content: field.column(type.String()).optional(),
+      authorId: field.column(type.Uuid()),
       createdAt: field.column(type.DateTime()).default(now()).onCreate(gen.now()),
       updatedAt: field.column(type.temporal.UpdatedAt()),
     },

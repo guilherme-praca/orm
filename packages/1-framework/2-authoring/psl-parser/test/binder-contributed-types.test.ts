@@ -2,28 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { EMPTY_DATA_TYPES } from '../src/attribute-spec/spec-context';
 import { contributedTypeOf } from '../src/binder';
 import { contributedTypeCodecId } from '../src/contributed-type-scope';
-import { bindProject, createdAt, text, uuid, varchar } from './binder-contributed-types.helpers';
+import { bindProject, text, varchar } from './binder-contributed-types.helpers';
 
 describe('createBinder — contributed types', () => {
-  it('binds a field-preset name to the preset descriptor', () => {
-    const { resolve, diagnostics } = bindProject(
-      'model Post {\n  created temporal.createdAt()\n  bare temporal.createdAt\n}',
-    );
-
-    expect(diagnostics).toEqual([]);
-    for (const field of ['created', 'bare']) {
-      expect(resolve(field)).toEqual({
-        kind: 'contributedType',
-        symbol: {
-          kind: 'contributedType',
-          name: 'createdAt',
-          path: ['temporal', 'createdAt'],
-          descriptor: createdAt,
-        },
-      });
-    }
-  });
-
   it('binds a type-constructor name to the type-constructor descriptor', () => {
     const { resolve } = bindProject('model Post {\n  title String\n  slug db.VarChar(10)\n}');
 
@@ -39,22 +20,6 @@ describe('createBinder — contributed types', () => {
         path: ['db', 'VarChar'],
         descriptor: varchar,
       },
-    });
-  });
-
-  it('binds presets and type constructors that share a namespace', () => {
-    const { resolve, diagnostics } = bindProject(
-      'model Post {\n  id db.uuid(7)\n  slug db.VarChar(10)\n}',
-    );
-
-    expect(diagnostics).toEqual([]);
-    expect(resolve('id')).toEqual({
-      kind: 'contributedType',
-      symbol: { kind: 'contributedType', name: 'uuid', path: ['db', 'uuid'], descriptor: uuid },
-    });
-    expect(resolve('slug')).toMatchObject({
-      kind: 'contributedType',
-      symbol: { path: ['db', 'VarChar'], descriptor: varchar },
     });
   });
 

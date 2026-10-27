@@ -94,7 +94,7 @@ describe('the temporal type aliases with real packs', () => {
     expect(throughAliases.execution?.mutations.defaults).toHaveLength(2);
   });
 
-  it('store on SQLite exactly what the matching presets store', () => {
+  it('store on SQLite exactly what the matching generator attributes store', () => {
     const throughAliases = succeeded(
       interpretSqlite(`model Event {
   id        Int                @id
@@ -103,15 +103,15 @@ describe('the temporal type aliases with real packs', () => {
 }
 `),
     );
-    const throughPresets = succeeded(
+    const throughAttributes = succeeded(
       interpretSqlite(`model Event {
-  id        Int                  @id
-  createdAt temporal.createdAt()
-  updatedAt temporal.updatedAt()
+  id        Int      @id
+  createdAt DateTime @onCreate(now())
+  updatedAt DateTime @onCreate(now()) @onUpdate(now())
 }
 `),
     );
-    expect(throughAliases).toEqual(throughPresets);
+    expect(throughAliases).toEqual(throughAttributes);
     expect(throughAliases.execution?.mutations.defaults).toHaveLength(2);
   });
 
@@ -151,7 +151,7 @@ describe('the temporal type aliases with real packs', () => {
     );
   });
 
-  it('give the TypeScript builder on SQLite what the presets give it', () => {
+  it('give the TypeScript builder on SQLite what they give PSL', () => {
     const throughAliases = defineSqliteContract({}, ({ type, field, model }) => ({
       models: {
         Event: model('Event', {
@@ -163,17 +163,15 @@ describe('the temporal type aliases with real packs', () => {
         }).sql({ table: 'Event' }),
       },
     }));
-    const throughPresets = defineSqliteContract({}, ({ type, field, model }) => ({
-      models: {
-        Event: model('Event', {
-          fields: {
-            id: field.column(type.Int()).id(),
-            createdAt: field.temporal.createdAt(),
-            updatedAt: field.temporal.updatedAt(),
-          },
-        }).sql({ table: 'Event' }),
-      },
-    }));
-    expect(throughAliases).toEqual(throughPresets);
+    expect(throughAliases).toEqual(
+      succeeded(
+        interpretSqlite(`model Event {
+  id        Int                @id
+  createdAt temporal.CreatedAt
+  updatedAt temporal.UpdatedAt
+}
+`),
+      ),
+    );
   });
 });

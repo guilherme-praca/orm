@@ -140,12 +140,6 @@ const authoringContributions = assembleAuthoringContributions([
             args: [{ name: 'sql', kind: 'value', dataType: 'fixture/expression' }],
             output: { codecId: 'fixture/raw' },
           },
-          Mode: {
-            kind: 'typeConstructor',
-            documentation: 'A deletion mode.',
-            args: [{ name: 'mode', kind: 'option', values: ['cascade', 'restrict'] }],
-            output: { codecId: 'fixture/mode' },
-          },
           Flag: {
             kind: 'typeConstructor',
             documentation: '',
@@ -190,15 +184,6 @@ const authoringContributions = assembleAuthoringContributions([
             kind: 'typeAlias',
             documentation: 'Set to now when a row is created.',
             output: { type: { codecId: 'fixture/text' }, onCreate: { name: 'now', args: {} } },
-          },
-        },
-      },
-      field: {
-        pg: {
-          Serial: {
-            kind: 'fieldPreset',
-            args: [{ name: 'start', kind: 'number' }],
-            output: { codecId: 'fixture/serial' },
           },
         },
       },

@@ -185,6 +185,7 @@ export type {
 } from '../contributed-type-scope';
 export {
   chosenTypeConstructor,
+  contributedTypeAt,
   contributedTypeCodecId,
   isContributedTypeChoice,
 } from '../contributed-type-scope';

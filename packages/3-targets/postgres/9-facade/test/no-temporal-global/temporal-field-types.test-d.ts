@@ -4,11 +4,11 @@ import type { Temporal } from 'temporal-spec';
 import { expectTypeOf, test } from 'vitest';
 import { defineContract } from '../../src/exports/contract-builder';
 
-const contract = defineContract({}, ({ type, field, model }) => ({
+const contract = defineContract({}, ({ type, field, model, gen }) => ({
   models: {
     Event: model('Event', {
       fields: {
-        id: field.id.uuidv4String(),
+        id: field.column(type.Uuid()).id().onCreate(gen.uuid()),
         at: field.column(type.TimestamptzTemporal(3)),
         local: field.column(type.TimestampTemporal()),
         day: field.column(type.DateTemporal()),
@@ -52,11 +52,11 @@ test('a timestamp read as a Date reads a Date, and an interval read as a string 
   expectTypeOf<EventRow['span']>().toEqualTypeOf<string>();
 });
 
-const convenience = defineContract({}, ({ type, field, model }) => ({
+const convenience = defineContract({}, ({ type, field, model, gen }) => ({
   models: {
     Order: model('Order', {
       fields: {
-        id: field.id.uuidv4String(),
+        id: field.column(type.Char(36)).id().onCreate(gen.uuid()),
         paidAt: field.column(type.DateTime()),
         settledAt: field.column(type.DateTime({ as: 'temporal' })),
         textAt: field.column(type.DateTime({ as: 'string', precision: 6 })),
@@ -97,11 +97,11 @@ test('a convenience type is typed as the value of the explicit type it chooses',
 });
 
 test('a convenience type helper refuses a combination with no explicit type', () => {
-  defineContract({}, ({ type, field, model }) => ({
+  defineContract({}, ({ type, field, model, gen }) => ({
     models: {
       Order: model('Order', {
         fields: {
-          id: field.id.uuidv4String(),
+          id: field.column(type.Char(36)).id().onCreate(gen.uuid()),
           // @ts-expect-error Temporal.PlainTime cannot hold a timetz offset
           at: field.column(type.Time({ as: 'temporal', storage: 'timetz' })),
           // @ts-expect-error a calendar date is never a JavaScript Date

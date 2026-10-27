@@ -146,9 +146,7 @@ function renderContributedTypeContent(
   dataTypes: DataTypeSupport,
 ): string {
   const fence = ['```prisma', renderContributedTypeLabel(symbol, dataTypes), '```'].join('\n');
-  const documentation =
-    symbol.descriptor.kind === 'fieldPreset' ? undefined : symbol.descriptor.documentation;
-  const content = withDocumentation(fence, documentation);
+  const content = withDocumentation(fence, symbol.descriptor.documentation);
   return symbol.descriptor.kind === 'typeChoice'
     ? `${content}\n\n${renderTypeChoices(symbol.descriptor)}`
     : content;
@@ -208,20 +206,18 @@ function renderContributedTypeLabel(
   if (args.length === 0) return path;
   const labels = args.map((arg, index) => {
     const key = arg.name ?? `arg${index + 1}`;
-    return `${key}${arg.optional === true ? '?' : ''}: ${argumentTypeLabel(arg, dataTypes, descriptor.kind === 'typeChoice')}`;
+    return `${key}${arg.optional === true ? '?' : ''}: ${argumentTypeLabel(arg, dataTypes)}`;
   });
   return `${path}(${labels.join(', ')})`;
 }
 
 function argumentTypeLabel(
-  arg: AuthoringArgumentDescriptor,
+  arg: AuthoringArgumentDescriptor | AuthoringTypeChoiceOption,
   dataTypes: DataTypeSupport,
-  optionsWrittenBare: boolean,
 ): string {
-  if (arg.kind === 'value') return describeAdmittedForms(dataTypes, dataTypeId(arg.dataType));
-  if (arg.kind === 'number') return 'number';
-  if (arg.kind === 'object') return 'object';
-  return arg.values.map((value) => (optionsWrittenBare ? value : `'${value}'`)).join(' | ');
+  return arg.kind === 'value'
+    ? describeAdmittedForms(dataTypes, dataTypeId(arg.dataType))
+    : arg.values.join(' | ');
 }
 
 function blockKeywordDocumentationAt(
