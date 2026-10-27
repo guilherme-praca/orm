@@ -59,6 +59,42 @@ async function inferAndEmit(
   return ctx;
 }
 
+async function withRuntime(
+  contract: Contract<SqlStorage>,
+  connectionString: string,
+  use: (session: {
+    readonly runtime: PostgresRuntimeImpl;
+    readonly context: ReturnType<typeof createExecutionContext>;
+    readonly client: Client;
+  }) => Promise<void>,
+): Promise<void> {
+  const stack = createSqlExecutionStack({
+    target: postgresTarget,
+    adapter: postgresAdapter,
+    driver: postgresDriver,
+  });
+  const context = createExecutionContext({ contract, stack });
+  const stackInstance = instantiateExecutionStack(stack);
+  const adapter = stackInstance.adapter;
+  const driver = stackInstance.driver;
+  if (!adapter || !driver) {
+    throw new Error('Adapter or driver descriptor missing from execution stack');
+  }
+  const client = new Client({ connectionString });
+  await client.connect();
+  try {
+    await driver.connect({ kind: 'pgClient', client, ownedByDriver: false });
+    const runtime = new PostgresRuntimeImpl({ context, adapter, driver, closeRefusal: undefined });
+    try {
+      await use({ runtime, context, client });
+    } finally {
+      await runtime.close();
+    }
+  } finally {
+    await client.end();
+  }
+}
+
 withTempDir(({ createTempDir }) => {
   describe('Runtime: unbounded numeric crashes ExecutionContext construction', () => {
     let database: Awaited<ReturnType<typeof createDevDatabase>>;
@@ -204,30 +240,10 @@ withTempDir(({ createTempDir }) => {
           opensAt: '08:30:00',
         };
 
-        const stack = createSqlExecutionStack({
-          target: postgresTarget,
-          adapter: postgresAdapter,
-          driver: postgresDriver,
-        });
-        const context = createExecutionContext({ contract, stack });
-        const stackInstance = instantiateExecutionStack(stack);
-        const adapter = stackInstance.adapter;
-        const driver = stackInstance.driver;
-        if (!adapter || !driver) {
-          throw new Error('Adapter or driver descriptor missing from execution stack');
-        }
-
-        const client = new Client({ connectionString: database.connectionString });
-        await client.connect();
-        try {
-          await driver.connect({ kind: 'pgClient', client, ownedByDriver: false });
-          const runtime = new PostgresRuntimeImpl({
-            context,
-            adapter,
-            driver,
-            closeRefusal: undefined,
-          });
-          try {
+        await withRuntime(
+          contract,
+          database.connectionString,
+          async ({ runtime, context, client }) => {
             const records = new Collection({ runtime, context }, 'Record', {
               namespaceId: 'public',
             });
@@ -265,12 +281,47 @@ withTempDir(({ createTempDir }) => {
               code: 'RUNTIME.DECODE_FAILED',
               cause: refusal,
             });
-          } finally {
-            await runtime.close();
-          }
-        } finally {
-          await client.end();
-        }
+          },
+        );
+      },
+      timeouts.spinUpPpgDev,
+    );
+  });
+
+  describe('Runtime: a timestamp column whose default a Date cannot hold', () => {
+    let database: Awaited<ReturnType<typeof createDevDatabase>>;
+
+    beforeAll(async () => {
+      database = await createDevDatabase();
+      await withClient(database.connectionString, (client) =>
+        client.query(`
+          CREATE TABLE horizon (
+            id int4 PRIMARY KEY,
+            ends_at timestamp(3) NOT NULL DEFAULT 'infinity',
+            began_at timestamptz NOT NULL DEFAULT '-infinity'
+          );
+          INSERT INTO horizon (id) VALUES (1);
+        `),
+      );
+    }, timeouts.spinUpPpgDev);
+
+    afterAll(async () => {
+      if (database) await database.close();
+    }, timeouts.spinUpPpgDev);
+
+    it(
+      'reads a row created with the default, which infer types as a string',
+      async () => {
+        const ctx = await inferAndEmit(database.connectionString, createTempDir);
+        const contract = readEmittedContract(ctx);
+        await withRuntime(contract, database.connectionString, async ({ runtime, context }) => {
+          const horizons = new Collection({ runtime, context }, 'Horizon', {
+            namespaceId: 'public',
+          });
+          expect(await horizons.select('id', 'endsAt', 'beganAt').all()).toEqual([
+            { id: 1, endsAt: 'infinity', beganAt: '-infinity' },
+          ]);
+        });
       },
       timeouts.spinUpPpgDev,
     );

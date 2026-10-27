@@ -228,16 +228,16 @@ withTempDir(({ createTempDir }) => {
             }
 
             model SqlDefaults {
-              id             Int                          @id(map: "sql_defaults_pkey")
-              textNull       VarChar(32)?                 @default(sql\`NULL::character varying\`)
-              floatNaN       Float                        @default(NaN)
-              floatNegInf    Float                        @default(-Infinity)
-              realNaN        Real                         @default(NaN)
-              decimalNaN     Numeric                      @default(NaN)
-              timeWithZone   Time(storage: timetz)        @default(timetz\`12:34:56Z\`)
-              stampInfinity  DateTime(storage: timestamp) @default(sql\`'infinity'::timestamp without time zone\`)
-              dayNegInfinity Date                         @default(date\`-infinity\`)
-              instantBc      DateTime(precision: 6)       @default(timestamptz\`-000043-03-15T00:00:00Z\`)
+              id             Int                                                    @id(map: "sql_defaults_pkey")
+              textNull       VarChar(32)?                                           @default(sql\`NULL::character varying\`)
+              floatNaN       Float                                                  @default(NaN)
+              floatNegInf    Float                                                  @default(-Infinity)
+              realNaN        Real                                                   @default(NaN)
+              decimalNaN     Numeric                                                @default(NaN)
+              timeWithZone   Time(storage: timetz)                                  @default(timetz\`12:34:56Z\`)
+              stampInfinity  DateTime(as: string, storage: timestamp, precision: 3) @default(timestamp\`infinity\`)
+              dayNegInfinity Date                                                   @default(date\`-infinity\`)
+              instantBc      DateTime(precision: 6)                                 @default(timestamptz\`-000043-03-15T00:00:00Z\`)
 
               @@map("sql_defaults")
             }

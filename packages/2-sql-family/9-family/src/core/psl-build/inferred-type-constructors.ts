@@ -33,6 +33,14 @@ export interface InferredTypeConstructor {
   readonly path: readonly string[];
   readonly descriptor: AuthoringTypeConstructorDescriptor;
   readonly dataType: SqlDataType;
+  /** The other type constructors whose codec represents the same data type, in namespace order. */
+  readonly alternatives: readonly InferredTypeConstructorPath[];
+}
+
+/** A type constructor by its path in an authoring namespace. */
+export interface InferredTypeConstructorPath {
+  readonly path: readonly string[];
+  readonly descriptor: AuthoringTypeConstructorDescriptor;
 }
 
 /** The constructors marked `inferred` in a stack, keyed by the id of the data type each produces. */
@@ -44,15 +52,30 @@ export function inferredTypeConstructors(input: {
   readonly codecLookup: Pick<CodecLookupWithDescriptors, 'descriptorFor'>;
   readonly dataTypeLookup: DataTypeLookup;
 }): InferredTypeConstructors {
+  const byDataType = new Map<string, InferredTypeConstructorPath[]>();
   const found = new Map<string, InferredTypeConstructor>();
-  for (const { path, descriptor } of authoringTypeConstructors(input.authoringTypes)) {
-    if (descriptor.inferred !== true) continue;
+  for (const typeConstructor of authoringTypeConstructors(input.authoringTypes)) {
+    const { path, descriptor } = typeConstructor;
     const dataTypeId = input.codecLookup.descriptorFor(descriptor.output.codecId)?.dataType;
     const dataType = dataTypeId === undefined ? undefined : input.dataTypeLookup.get(dataTypeId);
     if (dataType === undefined || !isSqlDataType(dataType)) continue;
-    found.set(dataType.id, { path, descriptor, dataType });
+    const ofDataType = byDataType.get(dataType.id) ?? [];
+    ofDataType.push(typeConstructor);
+    byDataType.set(dataType.id, ofDataType);
+    if (descriptor.inferred !== true) continue;
+    found.set(dataType.id, { path, descriptor, dataType, alternatives: [] });
   }
-  return found;
+  return new Map(
+    [...found].map(([id, marked]) => [
+      id,
+      {
+        ...marked,
+        alternatives: (byDataType.get(id) ?? []).filter(
+          ({ descriptor }) => descriptor !== marked.descriptor,
+        ),
+      },
+    ]),
+  );
 }
 
 function normalParams(

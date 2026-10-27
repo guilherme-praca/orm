@@ -2,6 +2,7 @@ import {
   type AuthoringTypeNamespace,
   authoringTypeConstructorArguments,
   type DataTypeSupport,
+  getAuthoringTypeChoice,
 } from '@internal/framework-components/authoring';
 import type { DataType } from '@internal/framework-components/codec';
 import { resolveReportedSqlType } from '@internal/sql-contract/data-type';
@@ -11,6 +12,7 @@ import { sqlFamilyError } from '../errors';
 import {
   fewestArgumentsCall,
   type InferredTypeConstructor,
+  type InferredTypeConstructorPath,
   type InferredTypeConstructors,
   type PslTypeArgument,
   sameInNormalForm,
@@ -27,6 +29,13 @@ export interface PslTypeCall {
 
 /** The PSL type `contract infer` writes for a column that is not an enum, by table and column name. */
 export type ColumnTypeOf = (tableName: string, columnName: string) => PslTypeCall;
+
+/** Whether the codec of `type` reads the default the database reports for `column` as a row value. */
+export type ColumnTypeReadsDefault = (
+  tableName: string,
+  column: SqlColumnIR,
+  type: PslTypeCall,
+) => Promise<boolean>;
 
 /** One introspected table, with the schema it was read from. */
 export interface IntrospectedTable {
@@ -47,7 +56,7 @@ function reportedTypeOf(column: SqlColumnIR, tableName: string): ReportedSqlType
 
 /** The call to the type choice that becomes `marked` with every parameter in `params`, compared in the normal form, as `db verify` compares the column, with the explicit call it becomes. */
 function convenienceCall(
-  marked: InferredTypeConstructor,
+  marked: InferredTypeConstructorPath & Pick<InferredTypeConstructor, 'dataType'>,
   params: Readonly<Record<string, unknown>>,
   authoringTypes: AuthoringTypeNamespace,
   support: DataTypeSupport,
@@ -73,18 +82,58 @@ function convenienceCall(
   );
 }
 
-function writtenCall(
+/**
+ * The first call to a row of the type choice `written` names whose type constructor represents the same data type, with the same parameters, and whose codec reads the column default.
+ */
+async function rowReadingDefault(
+  written: PslTypeCall,
+  marked: InferredTypeConstructor,
+  params: Readonly<Record<string, unknown>>,
+  authoringTypes: AuthoringTypeNamespace,
+  support: DataTypeSupport,
+  readsDefault: (type: PslTypeCall) => Promise<boolean>,
+): Promise<PslTypeCall | undefined> {
+  const choice = getAuthoringTypeChoice({ type: authoringTypes }, written.path);
+  for (const row of choice?.descriptor.choices ?? []) {
+    const path = [...written.path.slice(0, -1), row.type].join('.');
+    const alternative = marked.alternatives.find((candidate) => candidate.path.join('.') === path);
+    const call =
+      alternative &&
+      convenienceCall(
+        { ...alternative, dataType: marked.dataType },
+        params,
+        authoringTypes,
+        support,
+      );
+    if (call !== undefined && (await readsDefault(call))) return call;
+  }
+  return undefined;
+}
+
+async function writtenCall(
   constructors: InferredTypeConstructors,
   dataTypes: readonly DataType[],
   authoringTypes: AuthoringTypeNamespace,
   support: DataTypeSupport,
   reported: ReportedSqlType,
-): PslTypeCall | undefined {
+  readsDefault: (type: PslTypeCall) => Promise<boolean>,
+): Promise<PslTypeCall | undefined> {
   const resolved = resolveReportedSqlType(reported, dataTypes);
   const marked = resolved && constructors.get(resolved.dataType.id);
   if (resolved === undefined || marked === undefined) return undefined;
   const convenience = convenienceCall(marked, resolved.typeParams, authoringTypes, support);
-  if (convenience !== undefined) return convenience;
+  if (convenience !== undefined) {
+    if (await readsDefault(convenience)) return convenience;
+    const reading = await rowReadingDefault(
+      convenience,
+      marked,
+      resolved.typeParams,
+      authoringTypes,
+      support,
+      readsDefault,
+    );
+    return reading ?? convenience;
+  }
   const call = fewestArgumentsCall(marked, resolved.typeParams);
   const args = call && writtenTypeArguments(marked.descriptor, call.args, support);
   return (
@@ -98,9 +147,9 @@ function writtenCall(
 }
 
 /**
- * The type of every column of `tables` that `isEnumColumn` does not claim, through the constructor marked `inferred` for the data type that claims the column's reported type: the type choice call that becomes it, with only the arguments that differ from the defaults, or else the call to it with the fewest arguments. When any column has no such call, throws `CONTRACT.INFER_COLUMN_TYPE_UNCLAIMED` listing every one of them.
+ * The type of every column of `tables` that `isEnumColumn` does not claim, through the constructor marked `inferred` for the data type that claims the column's reported type: the type choice call that becomes it, with only the arguments that differ from the defaults, or else the call to it with the fewest arguments. When the codec of that type choice call cannot read the column default as a row, the first row of the same type choice whose codec can is written instead. When any column has no such call, throws `CONTRACT.INFER_COLUMN_TYPE_UNCLAIMED` listing every one of them.
  */
-export function inferColumnTypes(input: {
+export async function inferColumnTypes(input: {
   readonly tables: readonly IntrospectedTable[];
   readonly constructors: InferredTypeConstructors;
   /** The stack's type namespace, whose type choices infer writes where one becomes a marked constructor. */
@@ -108,7 +157,9 @@ export function inferColumnTypes(input: {
   /** The stack's data types, whose literals write each argument. */
   readonly dataTypes: DataTypeSupport;
   readonly isEnumColumn: (column: SqlColumnIR) => boolean;
-}): ColumnTypeOf {
+  /** Whether a type's codec reads the column default; every type does when `undefined`. */
+  readonly readsDefault: ColumnTypeReadsDefault | undefined;
+}): Promise<ColumnTypeOf> {
   const dataTypes = [...input.constructors.values()].map((marked) => marked.dataType);
   const types = new Map<string, PslTypeCall>();
   const unclaimed: string[] = [];
@@ -116,12 +167,14 @@ export function inferColumnTypes(input: {
     for (const column of columns) {
       if (input.isEnumColumn(column)) continue;
       const reported = reportedTypeOf(column, tableName);
-      const call = writtenCall(
+      const readsDefault = input.readsDefault;
+      const call = await writtenCall(
         input.constructors,
         dataTypes,
         input.authoringTypes,
         input.dataTypes,
         reported,
+        async (type) => (readsDefault === undefined ? true : readsDefault(tableName, column, type)),
       );
       if (call === undefined) {
         unclaimed.push(

@@ -9,7 +9,7 @@ import {
   readReportedDefault,
   type SqlPslBuildContext,
 } from '@internal/family-sql/control';
-import type { ColumnTypeOf } from '@internal/family-sql/psl-build';
+import type { ColumnTypeOf, ColumnTypeReadsDefault } from '@internal/family-sql/psl-build';
 import { type Codec, codecForRef, type DataTypeValue } from '@internal/framework-components/codec';
 import type { SqlColumnIR, SqlSchemaIR } from '@internal/sql-schema-ir/types';
 import { isInternalError } from '@internal/utils/internal-error';
@@ -94,6 +94,30 @@ export async function readDefaultWithCodec(
   }
   const read = await readReportedDefault(codec, reported.literal, raw);
   return 'resolvedDefault' in read ? read.resolvedDefault : rawExpression;
+}
+
+/**
+ * Whether the codec of the type `contract infer` would write reads the column's reported default as a row value, with `fromWire`. A default that is not a literal, or a type that names no codec, has nothing to read. A `Date` codec reads a time with digits below a millisecond, dropping them, so such a default stays with it.
+ */
+export function columnTypeReadsDefault(context: SqlPslBuildContext): ColumnTypeReadsDefault {
+  return async (_tableName, column, type) => {
+    const raw: unknown = column.default;
+    if (typeof raw !== 'string') return true;
+    const reported = readPostgresDefault(raw, column.many === true);
+    if (reported.kind !== 'literal') return true;
+    const codec = codecOf(() => type, false, context);
+    if (codec === undefined) return true;
+    for (const body of bodiesOf(reported.literal)) {
+      if (body === null) continue;
+      try {
+        await codec.fromWire(body, {});
+      } catch (error) {
+        if (isInternalError(error)) throw error;
+        return false;
+      }
+    }
+    return true;
+  };
 }
 
 /**

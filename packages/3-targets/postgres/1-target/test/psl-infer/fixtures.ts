@@ -146,7 +146,7 @@ export function inferFromFixtureTree(
 export function inferredColumnTypesOf(
   tables: Readonly<Record<string, SqlTableIR>>,
   enums: FixtureEnums = new Map(),
-): ColumnTypeOf {
+): Promise<ColumnTypeOf> {
   return inferColumnTypes({
     tables: Object.values(tables).map((table) => ({
       schemaName: 'public',
@@ -161,6 +161,7 @@ export function inferredColumnTypesOf(
     authoringTypes: inferBuildContext.authoringContributions.type,
     dataTypes: inferBuildContext.dataTypes,
     isEnumColumn: (column) => column.reportedType?.kind === 'enum',
+    readsDefault: undefined,
   });
 }
 

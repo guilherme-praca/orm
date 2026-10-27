@@ -6,6 +6,7 @@
 
 export {
   type ColumnTypeOf,
+  type ColumnTypeReadsDefault,
   type IntrospectedTable,
   inferColumnTypes,
   type PslTypeCall,

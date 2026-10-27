@@ -153,23 +153,12 @@ describe('printPsl writes each default as the literal the column data type takes
     },
   );
 
-  it.each([
-    ['infinity', 'timestamp', "'infinity'::timestamp without time zone"],
-    ['-infinity', 'timestamp', "'-infinity'::timestamp without time zone"],
-    ['infinity', 'timestamptz', "'infinity'::timestamp with time zone"],
-    [
-      'microseconds',
-      'timestamptz(6)',
-      "'2024-01-01 01:00:00.123456+00'::timestamp(6) with time zone",
-    ],
-  ])(
-    'prints a default of %s on a %s column, which a Date cannot hold, as its raw expression',
-    async (_value, typeText, rawDefault) => {
-      expect(await printedDefaults([introspected('stamp', typeText, rawDefault)])).toEqual({
-        stamp: `@default(sql\`${rawDefault}\`)`,
-      });
-    },
-  );
+  it('prints a default with digits below a millisecond, which a Date cannot hold, as its raw expression', async () => {
+    const rawDefault = "'2024-01-01 01:00:00.123456+00'::timestamp(6) with time zone";
+    expect(await printedDefaults([introspected('stamp', 'timestamptz(6)', rawDefault)])).toEqual({
+      stamp: `@default(sql\`${rawDefault}\`)`,
+    });
+  });
 
   it('prints a list default with an element a Date cannot hold as its raw expression, and one it holds as a literal list', async () => {
     const micro =

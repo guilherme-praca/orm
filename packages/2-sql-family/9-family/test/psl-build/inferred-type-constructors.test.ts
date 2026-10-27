@@ -9,7 +9,11 @@ import type { ReportedSqlType, SqlColumnIRInput } from '@internal/sql-schema-ir/
 import { SqlColumnIR } from '@internal/sql-schema-ir/types';
 import { type } from 'arktype';
 import { describe, expect, it } from 'vitest';
-import { type IntrospectedTable, inferColumnTypes } from '../../src/core/psl-build/column-types';
+import {
+  type IntrospectedTable,
+  inferColumnTypes,
+  type PslTypeCall,
+} from '../../src/core/psl-build/column-types';
 import {
   fewestArgumentsCall,
   inferredTypeConstructors,
@@ -280,17 +284,21 @@ describe('writtenTypeArguments', () => {
 });
 
 describe('inferColumnTypes', () => {
-  const infer = (tables: readonly IntrospectedTable[]) =>
+  const infer = (
+    tables: readonly IntrospectedTable[],
+    readsDefault: Parameters<typeof inferColumnTypes>[0]['readsDefault'] = undefined,
+  ) =>
     inferColumnTypes({
       tables,
       constructors,
       authoringTypes,
       dataTypes,
       isEnumColumn: () => false,
+      readsDefault,
     });
 
-  it("writes each column as its data type's marked constructor, quoting a string argument", () => {
-    const typeOf = infer([
+  it("writes each column as its data type's marked constructor, quoting a string argument", async () => {
+    const typeOf = await infer([
       {
         schemaName: 'public',
         tableName: 'thing',
@@ -319,8 +327,8 @@ describe('inferColumnTypes', () => {
     });
   });
 
-  it('writes the type choice that becomes the marked constructor, with the arguments that differ from its defaults', () => {
-    const typeOf = infer([
+  it('writes the type choice that becomes the marked constructor, with the arguments that differ from its defaults', async () => {
+    const typeOf = await infer([
       {
         schemaName: 'public',
         tableName: 'event',
@@ -337,8 +345,8 @@ describe('inferColumnTypes', () => {
     });
   });
 
-  it('records the explicit call the written type choice call becomes, not the column parameters in normal form', () => {
-    const typeOf = infer([
+  it('records the explicit call the written type choice call becomes, not the column parameters in normal form', async () => {
+    const typeOf = await infer([
       { schemaName: 'public', tableName: 'shop', columns: [column('opens', catalog('clock'))] },
     ]);
     expect(typeOf('shop', 'opens')).toEqual({
@@ -348,8 +356,8 @@ describe('inferColumnTypes', () => {
     });
   });
 
-  it('fails on every column no marked constructor writes, listing them sorted', () => {
-    expect(() =>
+  it('fails on every column no marked constructor writes, listing them sorted', async () => {
+    await expect(
       infer([
         {
           schemaName: 'public',
@@ -358,7 +366,7 @@ describe('inferColumnTypes', () => {
         },
         { schemaName: 'public', tableName: 'alpha', columns: [column('meta', catalog('hstore'))] },
       ]),
-    ).toThrow(
+    ).rejects.toThrow(
       expect.objectContaining({
         code: 'CONTRACT.INFER_COLUMN_TYPE_UNCLAIMED',
         fix: `No configured pack has a type for these columns. If a type comes from a database extension that has a Prisma 8 pack, add the pack to extensions in prisma.config.ts. Otherwise, to keep such a column, write the schema by hand and declare its field as Raw(sql\`<type>\`) with the type as listed, or change the column's type or remove the column from the database.`,
@@ -367,8 +375,8 @@ describe('inferColumnTypes', () => {
     );
   });
 
-  it('treats a column without a reported type as an internal error', () => {
-    expect(() =>
+  it('treats a column without a reported type as an internal error', async () => {
+    await expect(
       infer([
         {
           schemaName: 'public',
@@ -376,6 +384,60 @@ describe('inferColumnTypes', () => {
           columns: [new SqlColumnIR({ name: 'id', typeText: 'int4', nullable: false })],
         },
       ]),
-    ).toThrow(/without the type the database reported/);
+    ).rejects.toThrow(/without the type the database reported/);
+  });
+
+  describe('when the codec of the type choice call cannot read the column default', () => {
+    const event: readonly IntrospectedTable[] = [
+      { schemaName: 'public', tableName: 'event', columns: [column('at', catalog('stamp(3)'))] },
+    ];
+
+    it('writes the first row of the same type choice whose codec reads it', async () => {
+      const readsDefault = async (_table: string, _column: SqlColumnIR, call: PslTypeCall) =>
+        call.explicit.path.join('.') !== 'StampDate';
+      const typeOf = await infer(event, readsDefault);
+      expect(typeOf('event', 'at')).toEqual({
+        path: ['Stamp'],
+        args: [
+          { name: 'value', text: 'text' },
+          { name: 'precision', text: '3' },
+        ],
+        explicit: { path: ['StampText'], values: [3] },
+      });
+    });
+
+    it('keeps the type choice call when no row reads it', async () => {
+      const typeOf = await infer(event, async () => false);
+      expect(typeOf('event', 'at')).toEqual({
+        path: ['Stamp'],
+        args: [],
+        explicit: { path: ['StampDate'], values: [3] },
+      });
+    });
+  });
+
+  it('asks nothing of a column written as the fewest-arguments call of its constructor', async () => {
+    const asked: string[] = [];
+    const typeOf = await infer(
+      [
+        {
+          schemaName: 'public',
+          tableName: 'thing',
+          columns: [column('amount', catalog('numeric(10,0)'))],
+        },
+      ],
+      async (_table, column) => {
+        asked.push(column.name);
+        return false;
+      },
+    );
+    expect({ amount: typeOf('thing', 'amount'), asked }).toEqual({
+      amount: {
+        path: ['Numeric'],
+        args: [{ name: undefined, text: '10' }],
+        explicit: { path: ['Numeric'], values: [10] },
+      },
+      asked: [],
+    });
   });
 });
