@@ -70,6 +70,9 @@ SQL does not follow this ADR fully yet. Its builder throws its first refusal, so
 
 - **Each source keeps its assembly, and a shared function checks the built contract.** The contract has lost what the source wrote: the position of an index, the value a variant wrote, which preset made a field. Refusals could not be placed, and some rules could not be checked at all.
 - **The builder throws its first refusal.** PSL would then report one problem per run, and could not place it without catching and parsing the error.
+- **One definition shared by every family.** A definition is a family-layer type in the three-layer IR pattern: MongoDB's names collections and indexes, SQL's names tables and columns. Each family has its own definition, built the same way.
+- **Copy SQL's definition exactly, and add polymorphism to the built contract afterwards.** MongoDB's `defineContract` already resolved polymorphism in its builder, and a step after the builder cannot place a refusal at a source position. A family's definition holds what the reference still lacks, and the reference catches up (TML-2228).
+- **Each source keeps its assembly and calls shared helpers,** as MongoDB did with `deriveCollectionValidators` and `buildMongoStorage`. Model assembly, polymorphism, generated values and enum checks were still written once per source, and each new rule needed another helper and a call in every source.
 
 ## Related ADRs
 
