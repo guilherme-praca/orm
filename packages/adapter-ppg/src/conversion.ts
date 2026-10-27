@@ -48,6 +48,9 @@ export function convertArgs(args: Array<unknown>, argTypes: Array<ArgType>): Arr
   })
 }
 
+/**
+ * Converts a single scalar value, or one element of a list, to a PPG client-compatible value.
+ */
 function convertArg(arg: unknown, argType: ArgType): unknown {
   if (arg === null || arg === undefined) {
     return null
@@ -348,6 +351,9 @@ export const builtinParsers = Object.entries({
   parse: v,
 }))
 
+/**
+ * Element normalizer for array types whose elements the data mapper already accepts as strings.
+ */
 function identity(x: string): string {
   return x
 }
